@@ -1,0 +1,108 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #0c0f14;
+  color: #f4f6f8;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background: #111827;
+  padding: 16px 24px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mode {
+  background: #2563eb;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+nav a {
+  color: #d1d5db;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+main {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.panel {
+  background: #111827;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 0 0 1px #1f2937;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button[disabled] {
+  background: #4b5563;
+  cursor: not-allowed;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tags span {
+  background: #1f2937;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.alert {
+  background: #7c2d12;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.log-box {
+  background: #0f172a;
+  padding: 12px;
+  border-radius: 8px;
+  min-height: 60px;
+}
+
+footer {
+  padding: 16px 24px;
+  border-top: 1px solid #1f2937;
+  color: #9ca3af;
+}
