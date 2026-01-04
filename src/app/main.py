@@ -29,7 +29,8 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
 
 
 def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
-    if use_mock:
+    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
+    if should_mock:
         client = MockAlpacaClient()
     else:
         credentials = AlpacaCredentials(
