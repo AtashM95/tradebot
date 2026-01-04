@@ -1,0 +1,125 @@
+# config/config.yaml
+# Ultimate Trading Bot v2 — defaults
+# Precedence: ENV (.env) > this YAML > code defaults
+
+app:
+  mode: paper          # backtest | paper | live
+  host: "127.0.0.1"
+  port: 5000
+  auto_open_browser: true
+  log_level: "INFO"
+
+storage:
+  database_url: "sqlite:///data/trading_bot.db"
+  data_dir: "data"
+  cache_dir: "data/cache"
+  models_dir: "models"
+  logs_dir: "logs"
+  data_cache_format: "parquet"
+  data_compression: "zstd"
+
+alpaca:
+  # NOTE: Keys are read from ENV:
+  # - ALPACA_PAPER_API_KEY / ALPACA_PAPER_SECRET_KEY
+  # - ALPACA_LIVE_API_KEY  / ALPACA_LIVE_SECRET_KEY
+  trading_base_url: ""   # optional override; usually empty
+  data_base_url: ""      # optional override; usually empty
+  paper_default: true
+
+universe:
+  watchlist_default: ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"]
+  watchlist_max_size: 200
+
+trading:
+  long_only: true
+  allow_short: false
+  allow_options: false
+  allow_crypto: false
+  allow_fx: false
+  target_hold_days_min: 5
+  target_hold_days_max: 14
+  trade_only_market_hours: true
+
+risk:
+  profile: "balanced"        # conservative | balanced | aggressive
+  risk_per_trade: 0.005
+  max_open_positions: 10
+  max_position_weight: 0.12
+  max_sector_weight: 0.30
+  max_symbol_correlation: 0.85
+  cash_buffer: 0.08
+  daily_max_loss: 0.02
+  weekly_max_drawdown: 0.05
+
+  stop_takeprofit:
+    stop_method: "atr"
+    atr_period: 14
+    atr_multiplier_stop: 2.0
+    atr_multiplier_tp: 4.0
+    trailing_stop_enabled: true
+    trailing_atr_multiplier: 2.5
+
+  rebalance:
+    frequency: "weekly"
+    threshold: 0.06
+
+funding_alert:
+  enabled: true
+  swap_score_gap_threshold: 0.15
+  partial_entry_enabled: true
+  partial_entry_fraction: 0.25
+  trade_queue_enabled: true
+  trade_queue_ttl_hours: 48
+  desktop_notifications: true
+
+strategies:
+  enable_setup_gate: true
+  enable_trend_following: true
+  enable_breakout: true
+  enable_pullback_retest: true
+  enable_rsi_momentum: true
+  enable_candle_patterns: true
+  enable_fib_pullback: true
+  enable_volume_confirm: true
+
+ensemble:
+  method: "weighted"
+  min_final_score_to_trade: 0.70
+
+sentiment:
+  enabled: true
+  # Keys are read from ENV when present:
+  # - NEWSAPI_KEY
+  # - FINNHUB_KEY
+  # - FRED_API_KEY
+
+ml:
+  enabled: true
+  retrain:
+    schedule: "weekly"                # weekly | manual
+    on_drift: true
+    on_performance_drop: true
+  validation:
+    backtest_years: 5
+    walk_forward_enabled: true
+    train_window_days: 504
+    test_window_days: 126
+  drift_thresholds:
+    data_drift_threshold: 0.15
+    performance_drift_threshold: 0.10
+  hpo:
+    enabled: true
+    engine: "optuna"
+    trials: 50
+  shadow_test:
+    on_paper: true
+    days: 3
+  registry:
+    enabled: true
+    promotion_policy: "paper_pass_then_manual"
+
+live_safety:
+  lock_enabled: true
+  # PIN is read from ENV:
+  # - LIVE_UNLOCK_PIN
+  confirm_phrase: "I_UNDERSTAND_LIVE_TRADING_RISK"
