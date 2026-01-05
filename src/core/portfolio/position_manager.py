@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.core.contracts import OrderRequest
 from src.core.data.market_data import MarketDataProvider
@@ -31,7 +31,7 @@ class PositionManager:
             stop = float(trade["stop"])
             take_profit = float(trade["take_profit"])
             opened_at = datetime.fromisoformat(trade["opened_at"])
-            held_days = (datetime.utcnow() - opened_at).days
+            held_days = (datetime.now(timezone.utc) - opened_at).days
             if self.trailing_stop_enabled:
                 atr = max(features.values.get("atr", 0.0), 0.01)
                 new_stop = max(stop, latest_close - atr * self.trailing_atr_multiplier)

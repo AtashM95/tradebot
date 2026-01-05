@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.core.storage.db import SQLiteStore
 
@@ -27,7 +27,7 @@ class TradeQueue:
                     "payload": json.loads(row["payload"]),
                     "expires_at": row["expires_at"],
                     "created_at": row["created_at"],
-                    "expired": datetime.fromisoformat(row["expires_at"]) < datetime.utcnow(),
+                    "expired": datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc),
                 }
             )
         return items

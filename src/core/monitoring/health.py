@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -10,7 +10,7 @@ class HealthMonitor:
     last_cycle_at: datetime | None = None
 
     def status(self) -> dict:
-        uptime = datetime.utcnow() - self.started_at
+        uptime = datetime.now(timezone.utc) - self.started_at
         return {
             "status": "ok",
             "uptime_seconds": int(uptime.total_seconds()),
@@ -18,4 +18,4 @@ class HealthMonitor:
         }
 
     def tick(self) -> None:
-        self.last_cycle_at = datetime.utcnow()
+        self.last_cycle_at = datetime.now(timezone.utc)

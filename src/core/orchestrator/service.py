@@ -104,7 +104,7 @@ class Orchestrator:
                     details=json.dumps(funding.details),
                 )
                 self.trade_queue.enqueue(final.symbol, final.model_dump())
-                if self.settings.funding_alert.desktop_notifications:
+                if self.settings.notifications_enabled and self.settings.funding_alert.desktop_notifications:
                     notification = send_desktop_notification(
                         "Funding Alert",
                         f"{final.symbol}: missing ${funding.missing_cash:.2f}",

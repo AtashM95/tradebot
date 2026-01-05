@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -88,7 +88,12 @@ def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterS
         cash_buffer=settings.risk.cash_buffer,
     )
     execution = ExecutionService(settings=settings, client=client)
-    backtester = WalkForwardBacktester()
+    backtester = WalkForwardBacktester(
+        data_provider=data_provider,
+        feature_engine=feature_engine,
+        ensemble=ensemble,
+        risk_manager=risk_manager,
+    )
     return TestCenterService(
         data_provider=data_provider,
         feature_engine=feature_engine,
@@ -109,7 +114,7 @@ def create_app(
     app = FastAPI(title="Ultimate Trading Bot v2", version="0.1.0")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    health_monitor = HealthMonitor(started_at=datetime.utcnow())
+    health_monitor = HealthMonitor(started_at=datetime.now(timezone.utc))
     effective_mock = _env_mock_mode() if use_mock is None else use_mock
     client, mock_mode = build_clients(settings, use_mock=effective_mock)
     cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
@@ -157,9 +162,9 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
         return templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "mode": settings.app.mode,
                 "watchlist": settings.universe.watchlist_default,
                 "risk": settings.risk.model_dump(),
