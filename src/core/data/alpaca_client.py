@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import numpy as np
@@ -10,7 +10,8 @@ from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.enums import OrderClass, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLossRequest, TakeProfitRequest
 
 from src.core.contracts import OrderRequest, OrderResult
 
@@ -53,13 +54,24 @@ class AlpacaClient:
         return df[["ts", "open", "high", "low", "close", "volume"]]
 
     def submit_order(self, request: OrderRequest) -> OrderResult:
-        order = MarketOrderRequest(
-            symbol=request.symbol,
-            qty=request.quantity,
-            side=request.side,
-            time_in_force=request.time_in_force,
-        )
-        response = self._trading.submit_order(order)
+        time_in_force = self._map_time_in_force(request.time_in_force)
+        base_payload = {
+            "symbol": request.symbol,
+            "qty": request.quantity,
+            "side": request.side,
+            "time_in_force": time_in_force,
+            "client_order_id": request.client_order_id,
+        }
+        bracket_payload = self._build_bracket_payload(request)
+        if request.order_type == "market":
+            order = MarketOrderRequest(**base_payload, **bracket_payload)
+        elif request.order_type == "limit":
+            if request.limit_price is None:
+                raise ValueError("Limit orders require limit_price.")
+            order = LimitOrderRequest(limit_price=request.limit_price, **base_payload, **bracket_payload)
+        else:
+            raise ValueError(f"Unsupported order type: {request.order_type}")
+        response = self._trading.submit_order(order_data=order)
         data = response.model_dump()
         return OrderResult(
             order_id=str(data.get("id", "")),
@@ -69,6 +81,25 @@ class AlpacaClient:
             average_fill_price=data.get("filled_avg_price"),
             raw={"alpaca": "true"},
         )
+
+    @staticmethod
+    def _map_time_in_force(time_in_force: str) -> TimeInForce | str:
+        mapping = {
+            "day": TimeInForce.DAY,
+            "gtc": TimeInForce.GTC,
+        }
+        return mapping.get(time_in_force, time_in_force)
+
+    @staticmethod
+    def _build_bracket_payload(request: OrderRequest) -> dict:
+        if request.stop_loss is None and request.take_profit is None:
+            return {}
+        payload: dict = {"order_class": OrderClass.BRACKET}
+        if request.take_profit is not None:
+            payload["take_profit"] = TakeProfitRequest(limit_price=request.take_profit)
+        if request.stop_loss is not None:
+            payload["stop_loss"] = StopLossRequest(stop_price=request.stop_loss)
+        return payload
 
     def list_positions(self) -> list[dict]:
         positions = self._trading.get_all_positions()
@@ -88,7 +119,7 @@ class MockAlpacaClient:
 
     def get_daily_bars(self, symbol: str, limit: int = 200) -> pd.DataFrame:
         rng = np.random.default_rng(42)
-        dates = pd.date_range(end=datetime.utcnow(), periods=limit, freq="B")
+        dates = pd.date_range(end=datetime.now(timezone.utc), periods=limit, freq="B")
         base = np.linspace(100, 120, num=limit)
         noise = rng.normal(0, 0.5, size=limit)
         close = base + noise

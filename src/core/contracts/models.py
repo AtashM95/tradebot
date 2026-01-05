@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -31,7 +31,7 @@ class BarSeries(BaseModel):
 class Features(BaseModel):
     schema_version: str = "v1"
     symbol: str
-    computed_at: datetime = Field(default_factory=datetime.utcnow)
+    computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     values: Dict[str, float]
 
 
@@ -43,7 +43,7 @@ class SignalIntent(BaseModel):
     stop: float
     take_profit: float
     reasons: List[str]
-    ts: datetime = Field(default_factory=datetime.utcnow)
+    ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     strategy: str
     strength: SignalStrength = "medium"
 
@@ -57,7 +57,7 @@ class FinalSignal(BaseModel):
     take_profit: float
     reasons: List[str]
     intents: List[SignalIntent]
-    ts: datetime = Field(default_factory=datetime.utcnow)
+    ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RiskDecision(BaseModel):
@@ -102,7 +102,7 @@ class FillEvent(BaseModel):
 class FundingAlert(BaseModel):
     missing_cash: float
     proposed_actions: List[str]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     details: Dict[str, float] = Field(default_factory=dict)
 
 
@@ -111,7 +111,7 @@ class ModelVersionMeta(BaseModel):
     trained_range: str
     feature_schema: str
     metrics: Dict[str, float]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ModelMeta(ModelVersionMeta):

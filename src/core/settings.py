@@ -188,6 +188,7 @@ class Settings(BaseSettings):
     sentiment: SentimentSettings = Field(default_factory=SentimentSettings)
     ml: MLSettings = Field(default_factory=MLSettings)
     live_safety: LiveSafetySettings = Field(default_factory=LiveSafetySettings)
+    notifications_enabled: bool = True
 
     # ---- Secrets / keys (from ENV/.env) ----
     alpaca_paper_api_key: Optional[str] = None
