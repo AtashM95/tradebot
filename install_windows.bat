@@ -30,4 +30,4 @@ if errorlevel 1 (
   echo compileall basarisiz oldu. Lutfen Python kurulumunu ve dosya izinlerini kontrol edin.
   exit /b 1
 )
-echo Kurulum tamamlandı.
+echo Kurulum tamamlandi.

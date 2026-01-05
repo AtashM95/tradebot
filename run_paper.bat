@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal
 cd /d "%~dp0"
 
 if not exist .venv\Scripts\activate (

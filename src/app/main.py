@@ -214,9 +214,6 @@ def create_app(
         min_trend=settings.setup_gate.min_trend,
         min_rsi=settings.setup_gate.min_rsi,
     )
-    news_gate_service = NewsRiskGateService(settings=settings)
-    trade_explainer = TradeExplainerService(settings=settings)
-    daily_ops_reporter = DailyOpsReporterService(settings=settings)
     position_manager = PositionManager(
         data_provider=data_provider,
         feature_engine=feature_engine,
@@ -401,6 +398,13 @@ def create_app(
                 risk_decision,
             )
             return explanation.model_dump()
+        symbols = payload.get("symbols")
+        if not isinstance(symbols, list):
+            return {"error": "Semboller liste olmalıdır."}
+        return orchestrator.run_cycle(symbols)
+
+    @app.post("/api/run-cycle", response_class=JSONResponse)
+    def run_cycle(payload: dict) -> dict:
         symbols = payload.get("symbols")
         if not isinstance(symbols, list):
             return {"error": "Semboller liste olmalıdır."}
