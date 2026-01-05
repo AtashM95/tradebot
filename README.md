@@ -56,6 +56,21 @@ Tarayıcıda `http://127.0.0.1:5000` adresini açın.
 copy .env.example .env
 ```
 
+## 2.2 Mock Mode (API anahtarsız demo)
+```bash
+set TRADEBOT_MOCK_MODE=1
+python -m src.app.main
+```
+
+## 2.3 Live Unlock (Canlı mod güvenlik kilidi)
+- `.env` içinde `LIVE_UNLOCK_PIN` ve `LIVE_CONFIRM_PHRASE` ayarlayın.
+- UI veya API üzerinden:
+```bash
+curl -X POST http://127.0.0.1:5000/api/live/unlock ^
+  -H "Content-Type: application/json" ^
+  -d "{\"live_checkbox\": true, \"pin\": \"1234\", \"phrase\": \"I_UNDERSTAND_LIVE_TRADING_RISK\"}"
+```
+
 ## Start/Stop runner mantığı
 - **Başlat:** Orkestratör arka planda döngüye girer ve `cycle_interval_seconds` (varsayılan 600 sn) aralığıyla analiz çalıştırır.
 - **Duraklat:** Döngü beklemeye alınır, yeni analiz yapılmaz.
@@ -84,3 +99,9 @@ python scripts/run_stress_test.py --symbols AAPL,MSFT --shock -0.1
 - API anahtarlarınızı belirli aralıklarla değiştirin.
 - Eski anahtarları Alpaca panelinden devre dışı bırakın.
 - `.env` dosyasını **asla** commit etmeyin.
+
+---
+
+# 6) Sentiment Filtreleme
+- `sentiment.enabled=true` olduğunda, NewsAPI veya Finnhub anahtarları mevcutsa minimal sentiment skoru üretilir.
+- Skor `sentiment.min_score` altındaysa giriş sinyali veto edilir (fail-safe).

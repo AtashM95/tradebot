@@ -90,10 +90,17 @@ ensemble:
 
 sentiment:
   enabled: true
+  provider: "finnhub"          # finnhub | newsapi
+  min_score: -0.2
+  cache_ttl_seconds: 900
   # Keys are read from ENV when present:
   # - NEWSAPI_KEY
   # - FINNHUB_KEY
   # - FRED_API_KEY
+
+setup_gate:
+  min_trend: 0.0
+  min_rsi: 45.0
 
 ml:
   enabled: true
@@ -106,6 +113,7 @@ ml:
     walk_forward_enabled: true
     train_window_days: 504
     test_window_days: 126
+    step_window_days: 63
   drift_thresholds:
     data_drift_threshold: 0.15
     performance_drift_threshold: 0.10
@@ -119,6 +127,9 @@ ml:
   registry:
     enabled: true
     promotion_policy: "paper_pass_then_manual"
+    directory: "models/registry"
+
+sector_map_path: "config/sector_map.json"
 
 live_safety:
   lock_enabled: true

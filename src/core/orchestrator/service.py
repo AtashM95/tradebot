@@ -24,6 +24,7 @@ from src.core.portfolio.snapshot import PortfolioSnapshot
 from src.core.portfolio.trade_queue import TradeQueue
 from src.core.risk.correlation import CorrelationManager
 from src.core.risk.manager import RiskManager
+from src.core.sentiment.provider import SentimentProvider
 from src.core.settings import Settings
 from src.core.storage.db import SQLiteStore
 from src.core.strategies.strategies import build_strategies
@@ -50,6 +51,7 @@ class Orchestrator:
     error_handler: ErrorHandler
     performance_monitor: PerformanceMonitor
     alert_manager: AlertManager
+    sentiment_provider: SentimentProvider | None
     position_manager: PositionManager
     status: str = "stopped"
     last_run_summary: dict = field(default_factory=dict)
@@ -123,7 +125,7 @@ class Orchestrator:
                 self.store.add_log("info", f"Setup gate blocked {symbol}: {reason}")
                 continue
             intents = []
-            for strategy in build_strategies():
+            for strategy in build_strategies(self.settings.strategies):
                 signal = strategy.generate(features)
                 if signal:
                     intents.append(signal)
@@ -131,6 +133,14 @@ class Orchestrator:
             if final is None:
                 self.store.add_log("info", f"No final signal for {symbol}.")
                 continue
+            if self.settings.sentiment.enabled and self.sentiment_provider:
+                sentiment = self.sentiment_provider.get_sentiment(symbol)
+                if sentiment.score < self.settings.sentiment.min_score:
+                    self.store.add_log(
+                        "warning",
+                        f"Sentiment veto for {symbol}: score {sentiment.score:.2f}",
+                    )
+                    continue
             self.store.add_signal(
                 symbol=final.symbol,
                 score=final.score,
@@ -177,7 +187,7 @@ class Orchestrator:
                 final.symbol,
                 candidate_weight,
                 holdings,
-                sector_map={},
+                sector_map=self.sector_map,
             )
             if not corr_ok or not sector_ok:
                 self.store.add_log("warning", f"Correlation veto for {final.symbol}: {corr_reason or sector_reason}")

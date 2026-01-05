@@ -24,3 +24,16 @@ def test_correlation_manager_allows_sector_within_limit():
         sector_map={"AAPL": "tech", "MSFT": "tech"},
     )
     assert allowed is True
+
+
+def test_correlation_manager_blocks_sector_limit():
+    manager = CorrelationManager(max_symbol_correlation=0.9, max_sector_weight=0.25, window=5)
+    holdings = {"MSFT": 0.2}
+    allowed, reason = manager.check_sector(
+        "AAPL",
+        candidate_weight=0.1,
+        holdings=holdings,
+        sector_map={"AAPL": "tech", "MSFT": "tech"},
+    )
+    assert allowed is False
+    assert "sector_weight" in reason

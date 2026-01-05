@@ -20,6 +20,7 @@ from src.core.portfolio.position_manager import PositionManager
 from src.core.portfolio.trade_queue import TradeQueue
 from src.core.risk.correlation import CorrelationManager
 from src.core.risk.manager import RiskManager
+from src.core.sentiment.provider import SentimentProvider
 from src.core.settings import FundingAlertSettings, RiskSettings, Settings, StorageSettings, TradingConstraints
 from src.core.storage.db import SQLiteStore
 
@@ -52,6 +53,7 @@ def test_pipeline_dry_run(tmp_path):
     performance_monitor = PerformanceMonitor()
     alert_manager = AlertManager(cooldown_seconds=0)
     correlation_manager = CorrelationManager(max_symbol_correlation=0.95, max_sector_weight=0.3)
+    sentiment_provider = SentimentProvider(provider="finnhub", newsapi_key=None, finnhub_key=None)
     store = SQLiteStore(settings.storage.database_url)
     trade_queue = TradeQueue(store=store, ttl_hours=settings.funding_alert.trade_queue_ttl_hours)
     setup_gate = SetupGate(min_trend=-1.0, min_rsi=40.0)
@@ -74,6 +76,7 @@ def test_pipeline_dry_run(tmp_path):
         ensemble=ensemble,
         risk_manager=risk_manager,
         correlation_manager=correlation_manager,
+        sector_map={"AAPL": "Tech", "MSFT": "Tech"},
         execution=execution,
         order_manager=order_manager,
         slippage_model=slippage_model,
@@ -85,6 +88,7 @@ def test_pipeline_dry_run(tmp_path):
         error_handler=error_handler,
         performance_monitor=performance_monitor,
         alert_manager=alert_manager,
+        sentiment_provider=sentiment_provider,
         position_manager=position_manager,
     )
     orchestrator.start()

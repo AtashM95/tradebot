@@ -11,6 +11,26 @@ const analyzeSelectedButton = document.getElementById("analyze-selected");
 const analyzeAllButton = document.getElementById("analyze-all");
 const analyzeInput = document.getElementById("analyze-input");
 const analyzeStatus = document.getElementById("analyze-status");
+const backtestRunButton = document.getElementById("backtest-run");
+const backtestSymbolsInput = document.getElementById("backtest-symbols");
+const backtestYearsInput = document.getElementById("backtest-years");
+const backtestTrainInput = document.getElementById("backtest-train-days");
+const backtestTestInput = document.getElementById("backtest-test-days");
+const backtestStepInput = document.getElementById("backtest-step-days");
+const backtestResults = document.getElementById("backtest-results");
+const modelListButton = document.getElementById("model-list");
+const modelActiveButton = document.getElementById("model-active");
+const modelSetButton = document.getElementById("model-set-active");
+const modelIdInput = document.getElementById("model-id");
+const modelDriftBaseline = document.getElementById("model-drift-baseline");
+const modelDriftCurrent = document.getElementById("model-drift-current");
+const modelDriftButton = document.getElementById("model-drift-check");
+const modelShadowFeatures = document.getElementById("model-shadow-features");
+const modelShadowTarget = document.getElementById("model-shadow-target");
+const modelShadowCandidate = document.getElementById("model-shadow-candidate");
+const modelShadowActive = document.getElementById("model-shadow-active");
+const modelShadowButton = document.getElementById("model-shadow-test");
+const modelCenterResults = document.getElementById("model-center-results");
 const fundingAlertsPanel = document.getElementById("funding-alerts");
 const logBox = document.getElementById("log-box");
 const watchlistTags = document.querySelector("#watchlist .tags");
@@ -142,6 +162,111 @@ if (analyzeAllButton) {
     analyzeStatus.textContent = data.error
       ? format(t("analyze_error", "Analiz hatası: {error}"), { error: data.error })
       : data.message || format(t("analyze_processed", "{count} sembol işlendi."), { count: data.processed });
+  });
+}
+
+if (backtestRunButton) {
+  backtestRunButton.addEventListener("click", async () => {
+    if (!backtestResults) return;
+    backtestResults.textContent = t("backtest_running", "Geri test çalışıyor...");
+    const symbols = backtestSymbolsInput?.value?.trim();
+    const payload = {
+      symbols: symbols || undefined,
+      years: Number(backtestYearsInput?.value || 5),
+      train_days: Number(backtestTrainInput?.value || 504),
+      test_days: Number(backtestTestInput?.value || 126),
+      step_days: Number(backtestStepInput?.value || 63),
+    };
+    try {
+      const response = await fetch("/api/backtest/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        backtestResults.textContent = format(t("backtest_error", "Geri test hatası: {error}"), {
+          error: data.detail || "unknown",
+        });
+        return;
+      }
+      backtestResults.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      backtestResults.textContent = format(t("backtest_error", "Geri test hatası: {error}"), { error: err });
+    }
+  });
+}
+
+function renderModelResult(data) {
+  if (!modelCenterResults) return;
+  modelCenterResults.textContent = JSON.stringify(data, null, 2);
+}
+
+if (modelListButton) {
+  modelListButton.addEventListener("click", async () => {
+    const response = await fetch("/api/models/list");
+    renderModelResult(await response.json());
+  });
+}
+
+if (modelActiveButton) {
+  modelActiveButton.addEventListener("click", async () => {
+    const response = await fetch("/api/models/active");
+    renderModelResult(await response.json());
+  });
+}
+
+if (modelSetButton) {
+  modelSetButton.addEventListener("click", async () => {
+    const modelId = modelIdInput?.value?.trim();
+    if (!modelId) return;
+    const response = await fetch("/api/models/set-active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id: modelId }),
+    });
+    renderModelResult(await response.json());
+  });
+}
+
+if (modelDriftButton) {
+  modelDriftButton.addEventListener("click", async () => {
+    try {
+      const baseline = JSON.parse(modelDriftBaseline?.value || "[]");
+      const current = JSON.parse(modelDriftCurrent?.value || "[]");
+      const response = await fetch("/api/models/drift-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ baseline, current }),
+      });
+      renderModelResult(await response.json());
+    } catch (err) {
+      renderModelResult({ error: String(err) });
+    }
+  });
+}
+
+if (modelShadowButton) {
+  modelShadowButton.addEventListener("click", async () => {
+    try {
+      const candidateId = modelShadowCandidate?.value?.trim();
+      const activeId = modelShadowActive?.value?.trim();
+      const features = JSON.parse(modelShadowFeatures?.value || "[]");
+      const target = JSON.parse(modelShadowTarget?.value || "[]");
+      const response = await fetch("/api/models/shadow-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidate_model_id: candidateId,
+          active_model_id: activeId || undefined,
+          features,
+          target,
+        }),
+      });
+      renderModelResult(await response.json());
+    } catch (err) {
+      renderModelResult({ error: String(err) });
+    }
   });
 }
 
