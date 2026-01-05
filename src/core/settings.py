@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 from typing import Any, Dict, List, Literal, Optional
 
 import yaml
@@ -265,6 +266,13 @@ def load_settings(config_path: str = "config/config.yaml") -> Settings:
     cfg = _read_yaml(Path(config_path))
     # YAML -> Settings kwargs (lowest priority)
     settings = Settings(**cfg)
+    env_mode = os.getenv("APP_MODE")
+    if env_mode:
+        normalized = env_mode.strip().lower()
+        if normalized in {"backtest", "paper", "live"}:
+            settings.app.mode = normalized  # type: ignore[assignment]
+        else:
+            raise ValueError(f"Invalid APP_MODE value: {env_mode}")
     validate_settings(settings)
     return settings
 
