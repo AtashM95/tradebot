@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.core.contracts import Features
 from src.core.strategies.strategies import build_strategies
@@ -7,7 +7,7 @@ from src.core.strategies.strategies import build_strategies
 def test_strategies_generate_signal():
     features = Features(
         symbol="AAPL",
-        computed_at=datetime.utcnow(),
+        computed_at=datetime.now(timezone.utc),
         values={
             "close": 150.0,
             "atr": 2.0,
