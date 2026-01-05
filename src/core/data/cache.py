@@ -10,6 +10,7 @@ import pandas as pd
 @dataclass
 class DataCache:
     base_dir: str | Path
+    compression: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.base_path = Path(self.base_dir)
@@ -27,4 +28,4 @@ class DataCache:
 
     def save_daily_bars(self, symbol: str, bars: pd.DataFrame) -> None:
         path = self.base_path / "bars" / f"{symbol}.parquet"
-        bars.to_parquet(path, index=False)
+        bars.to_parquet(path, index=False, compression=self.compression)
