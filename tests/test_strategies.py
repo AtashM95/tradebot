@@ -1,11 +1,8 @@
 from datetime import datetime, timezone
 
 from src.core.contracts import Features
-from src.core.strategies.strategies import (
-    CandlePatternStrategy,
-    FibonacciPullbackStrategy,
-    build_strategies,
-)
+from src.core.settings import StrategyToggles
+from src.core.strategies.strategies import CandlePatternStrategy, FibonacciPullbackStrategy, build_strategies
 
 
 def _base_values() -> dict:
@@ -40,6 +37,20 @@ def test_strategies_generate_signal():
     features = Features(symbol="AAPL", computed_at=datetime.now(timezone.utc), values=_base_values())
     intents = [strategy.generate(features) for strategy in build_strategies()]
     assert any(intent is not None for intent in intents)
+
+
+def test_strategies_respect_toggles():
+    toggles = StrategyToggles(
+        enable_trend_following=False,
+        enable_breakout=False,
+        enable_pullback_retest=False,
+        enable_rsi_momentum=False,
+        enable_candle_patterns=False,
+        enable_fib_pullback=False,
+        enable_volume_confirm=False,
+    )
+    strategies = build_strategies(toggles)
+    assert strategies == []
 
 
 def test_candle_pattern_bullish_engulfing():
