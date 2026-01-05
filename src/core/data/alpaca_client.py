@@ -71,7 +71,7 @@ class AlpacaClient:
             order = LimitOrderRequest(limit_price=request.limit_price, **base_payload, **bracket_payload)
         else:
             raise ValueError(f"Unsupported order type: {request.order_type}")
-        response = self._trading.submit_order(order)
+        response = self._trading.submit_order(order_data=order)
         data = response.model_dump()
         return OrderResult(
             order_id=str(data.get("id", "")),

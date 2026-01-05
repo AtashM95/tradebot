@@ -15,8 +15,8 @@ class DummyTradingClient:
     def __init__(self) -> None:
         self.last_order = None
 
-    def submit_order(self, order):
-        self.last_order = order
+    def submit_order(self, order_data=None, **_kwargs):
+        self.last_order = order_data
         return DummyResponse()
 
 

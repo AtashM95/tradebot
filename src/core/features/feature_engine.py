@@ -37,7 +37,15 @@ class FeatureEngine:
         df["trend"] = df["ema_fast"] - df["ema_slow"]
         df["vol_avg"] = df["volume"].rolling(20).mean()
         latest = df.iloc[-1].fillna(0)
+        prev = df.iloc[-2].fillna(0) if len(df) > 1 else latest
+        prev2 = df.iloc[-3].fillna(0) if len(df) > 2 else prev
+        lookback = min(len(df), 50)
+        rolling_high = float(df["high"].tail(lookback).max())
+        rolling_low = float(df["low"].tail(lookback).min())
         values = {
+            "open": float(latest["open"]),
+            "high": float(latest["high"]),
+            "low": float(latest["low"]),
             "close": float(latest["close"]),
             "atr": float(latest["atr"]),
             "rsi": float(latest["rsi"]),
@@ -45,5 +53,18 @@ class FeatureEngine:
             "ema_slow": float(latest["ema_slow"]),
             "trend": float(latest["trend"]),
             "vol_avg": float(latest["vol_avg"]),
+            "volume": float(latest["volume"]),
+            "prev_open": float(prev["open"]),
+            "prev_high": float(prev["high"]),
+            "prev_low": float(prev["low"]),
+            "prev_close": float(prev["close"]),
+            "prev_volume": float(prev["volume"]),
+            "prev2_open": float(prev2["open"]),
+            "prev2_high": float(prev2["high"]),
+            "prev2_low": float(prev2["low"]),
+            "prev2_close": float(prev2["close"]),
+            "prev2_volume": float(prev2["volume"]),
+            "swing_high_50": rolling_high,
+            "swing_low_50": rolling_low,
         }
         return Features(symbol=symbol, values=values)

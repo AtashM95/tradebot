@@ -88,7 +88,12 @@ def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterS
         cash_buffer=settings.risk.cash_buffer,
     )
     execution = ExecutionService(settings=settings, client=client)
-    backtester = WalkForwardBacktester()
+    backtester = WalkForwardBacktester(
+        data_provider=data_provider,
+        feature_engine=feature_engine,
+        ensemble=ensemble,
+        risk_manager=risk_manager,
+    )
     return TestCenterService(
         data_provider=data_provider,
         feature_engine=feature_engine,
@@ -157,9 +162,9 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
         return templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "mode": settings.app.mode,
                 "watchlist": settings.universe.watchlist_default,
                 "risk": settings.risk.model_dump(),
