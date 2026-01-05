@@ -7,6 +7,7 @@ from src.core.contracts import OrderRequest
 from src.core.data.market_data import MarketDataProvider
 from src.core.execution.execution_service import ExecutionService
 from src.core.features.feature_engine import FeatureEngine
+from src.core.monitoring.performance import PerformanceMonitor
 from src.core.storage.db import SQLiteStore
 
 
@@ -15,6 +16,7 @@ class PositionManager:
     data_provider: MarketDataProvider
     feature_engine: FeatureEngine
     execution: ExecutionService
+    performance_monitor: PerformanceMonitor
     store: SQLiteStore
     max_hold_days: int
     trailing_stop_enabled: bool
@@ -56,7 +58,10 @@ class PositionManager:
                     idempotency_key=idempotency_key,
                     client_order_id=idempotency_key,
                 )
-                self.execution.submit_order(request)
+                self.execution.submit_order(request, allow_exit_without_unlock=True)
+                entry_price = float(trade["entry"])
+                pnl = (latest_close - entry_price) * int(trade["quantity"])
+                self.performance_monitor.record_trade(pnl)
                 self.store.close_trade(int(trade["id"]))
                 actions.append(f"Exit {symbol} triggered by {exit_reason} at {latest_close:.2f}")
         return actions

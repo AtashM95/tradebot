@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -169,6 +169,7 @@ def create_app(
         data_provider=data_provider,
         feature_engine=feature_engine,
         execution=execution,
+        performance_monitor=performance_monitor,
         store=store,
         max_hold_days=settings.trading.target_hold_days_max,
         trailing_stop_enabled=settings.risk.stop_takeprofit.trailing_stop_enabled,
@@ -208,7 +209,7 @@ def create_app(
             "index.html",
             {
                 "mode": settings.app.mode,
-                "watchlist": settings.universe.watchlist_default,
+                "watchlist": store.get_watchlist(),
                 "risk": settings.risk.model_dump(),
                 "mock_mode": mock_mode,
                 "i18n": i18n,
@@ -261,6 +262,26 @@ def create_app(
     def stop_orchestrator() -> dict:
         orchestrator.stop()
         return {"status": orchestrator.status}
+
+    @app.post("/api/live/unlock", response_class=JSONResponse)
+    async def unlock_live(request: Request) -> dict:
+        payload = await request.json()
+        live_checkbox = bool(payload.get("live_checkbox", False))
+        provided_pin = payload.get("pin")
+        provided_phrase = payload.get("phrase")
+        try:
+            expires = execution.unlock_live_session(
+                live_checkbox=live_checkbox,
+                provided_pin=provided_pin,
+                provided_phrase=provided_phrase,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "status": "unlocked",
+            "expires_at": expires.isoformat(),
+            "active": execution._session_active(),
+        }
 
     @app.get("/api/watchlist", response_class=JSONResponse)
     def get_watchlist() -> dict:

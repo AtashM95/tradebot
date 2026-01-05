@@ -194,7 +194,7 @@ class Orchestrator:
             )
             est_cost = self.slippage_model.estimate_cost(final.entry, decision.shares)
             self.store.add_log("info", f"Estimated slippage+fees for {final.symbol}: ${est_cost:.2f}")
-            result = self.order_manager.submit(order)
+            result = self.execution.submit_order(order)
             if result.status == "blocked":
                 self.store.add_log("warning", f"Order blocked for {final.symbol} (mock mode).")
                 continue

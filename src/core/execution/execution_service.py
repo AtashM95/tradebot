@@ -37,9 +37,11 @@ class ExecutionService:
         live_checkbox: bool = False,
         provided_pin: Optional[str] = None,
         provided_phrase: Optional[str] = None,
+        allow_exit_without_unlock: bool = False,
     ) -> ExecutionReport:
         if self.settings.app.mode == "live":
-            enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
+            if not self._session_active() and not allow_exit_without_unlock:
+                enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
         if request.side != "buy" and request.side != "sell":
             raise ValueError("Order side must be buy or sell.")
         if request.side == "sell" and request.quantity <= 0:

@@ -104,7 +104,7 @@ if (stopButton) {
 
 if (saveWatchlistButton) {
   saveWatchlistButton.addEventListener("click", async () => {
-it    const payload = { symbols: watchlistInput.value };
+    const payload = { symbols: watchlistInput.value };
     const response = await fetch("/api/watchlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -157,8 +157,8 @@ async function refreshFundingAlerts() {
     .map(
       (alert) =>
         `<div class="stacked-item">` +
-        `<strong>${alert.symbol}</strong> — ${format(t("funding_missing", "Eksik nakit: ${amount}"), {
-          amount: alert.missing_cash,
+        `<strong>${alert.symbol}</strong> — ${format(t("funding_missing", "Eksik nakit: {amount}"), {
+          amount: Number(alert.missing_cash).toFixed(2),
         })}<br/>` +
         `<span>${format(t("funding_actions", "Aksiyonlar: {actions}"), { actions: alert.proposed_actions })}</span><br/>` +
         `<span>${alert.created_at}</span>` +

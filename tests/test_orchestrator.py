@@ -60,6 +60,7 @@ def test_orchestrator_cycle_with_mock(tmp_path):
         data_provider=data_provider,
         feature_engine=feature_engine,
         execution=execution,
+        performance_monitor=performance_monitor,
         store=store,
         max_hold_days=settings.trading.target_hold_days_max,
         trailing_stop_enabled=False,

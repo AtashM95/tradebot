@@ -60,6 +60,7 @@ def test_pipeline_dry_run(tmp_path):
         data_provider=data_provider,
         feature_engine=feature_engine,
         execution=execution,
+        performance_monitor=performance_monitor,
         store=store,
         max_hold_days=settings.trading.target_hold_days_max,
         trailing_stop_enabled=False,
