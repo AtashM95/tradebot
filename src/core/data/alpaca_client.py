@@ -70,8 +70,14 @@ class AlpacaClient:
             raw={"alpaca": "true"},
         )
 
+    def list_positions(self) -> list[dict]:
+        positions = self._trading.get_all_positions()
+        return [position.model_dump() for position in positions]
+
 
 class MockAlpacaClient:
+    is_mock = True
+
     def get_account(self) -> dict:
         return {
             "id": "mock-account",
@@ -110,3 +116,6 @@ class MockAlpacaClient:
             average_fill_price=100.0,
             raw={"mock": "true"},
         )
+
+    def list_positions(self) -> list[dict]:
+        return []

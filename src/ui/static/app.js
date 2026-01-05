@@ -15,6 +15,31 @@ const fundingAlertsPanel = document.getElementById("funding-alerts");
 const logBox = document.getElementById("log-box");
 const watchlistTags = document.querySelector("#watchlist .tags");
 
+function t(key, fallback) {
+  if (Object.prototype.hasOwnProperty.call(I18N, key)) {
+    return I18N[key];
+  }
+  return fallback ?? key;
+}
+
+function tPath(path, fallback) {
+  const parts = path.split(".");
+  let current = I18N;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return fallback ?? path;
+    }
+    current = current[part];
+  }
+  return current ?? fallback ?? path;
+}
+
+function format(text, params) {
+  return String(text).replace(/\{(\w+)\}/g, (_, key) => {
+    return key in params ? params[key] : `{${key}}`;
+  });
+}
+
 async function fetchTestCenter() {
   testResults.textContent = t("test_center_running", "Kontroller çalıştırılıyor...");
   try {
@@ -30,7 +55,7 @@ async function fetchTestCenter() {
           `<div class="test-result ${check.status}">` +
           `<strong>${check.name}</strong> — ${tPath(`status_labels.${check.status}`, check.status)}<br/>` +
           `<span>${check.message}</span>` +
-          (check.details && check.details.mock_mode ? `<br/><em>MOCK MODE ACTIVE</em>` : "") +
+          (check.details && check.details.mock_mode ? `<br/><em>${t("test_center_mock", "MOCK MODU AKTİF")}</em>` : "") +
           (check.next_step ? `<br/><em>${check.next_step}</em>` : "") +
           "</div>"
       )
@@ -53,27 +78,33 @@ async function updateOrchestrator(action) {
 if (startButton) {
   startButton.addEventListener("click", async () => {
     const data = await updateOrchestrator("start");
-    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
+    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), {
+      status: tPath(`orchestrator_statuses.${data.status}`, data.status),
+    });
   });
 }
 
 if (pauseButton) {
   pauseButton.addEventListener("click", async () => {
     const data = await updateOrchestrator("pause");
-    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
+    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), {
+      status: tPath(`orchestrator_statuses.${data.status}`, data.status),
+    });
   });
 }
 
 if (stopButton) {
   stopButton.addEventListener("click", async () => {
-    const data = await updteOrchestrator("stop");
-    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
+    const data = await updateOrchestrator("stop");
+    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), {
+      status: tPath(`orchestrator_statuses.${data.status}`, data.status),
+    });
   });
 }
 
 if (saveWatchlistButton) {
   saveWatchlistButton.addEventListener("click", async () => {
-    const payload = { symbols: watchlistInput.value };
+it    const payload = { symbols: watchlistInput.value };
     const response = await fetch("/api/watchlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,8 +112,8 @@ if (saveWatchlistButton) {
     });
     const data = await response.json();
     watchlistStatus.textContent = data.error
-      ? `Error: ${data.error}`
-      : `Saved ${data.symbols.length} symbols.`;
+      ? format(t("watchlist_error", "Hata: {error}"), { error: data.error })
+      : format(t("watchlist_saved", "{count} sembol kaydedildi."), { count: data.symbols.length });
     if (!data.error) {
       renderWatchlistTags(data.symbols);
     }
@@ -98,7 +129,9 @@ if (analyzeSelectedButton) {
       body: JSON.stringify({ symbols }),
     });
     const data = await response.json();
-    analyzeStatus.textContent = data.message || `Processed ${data.processed} symbols.`;
+    analyzeStatus.textContent = data.error
+      ? format(t("analyze_error", "Analiz hatası: {error}"), { error: data.error })
+      : data.message || format(t("analyze_processed", "{count} sembol işlendi."), { count: data.processed });
   });
 }
 
@@ -106,7 +139,9 @@ if (analyzeAllButton) {
   analyzeAllButton.addEventListener("click", async () => {
     const response = await fetch("/api/analyze/all", { method: "POST" });
     const data = await response.json();
-    analyzeStatus.textContent = data.message || `Processed ${data.processed} symbols.`;
+    analyzeStatus.textContent = data.error
+      ? format(t("analyze_error", "Analiz hatası: {error}"), { error: data.error })
+      : data.message || format(t("analyze_processed", "{count} sembol işlendi."), { count: data.processed });
   });
 }
 
@@ -115,15 +150,17 @@ async function refreshFundingAlerts() {
   const response = await fetch("/api/funding-alerts");
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
-    fundingAlertsPanel.innerHTML = '<div class="alert">No active funding alerts.</div>';
+    fundingAlertsPanel.innerHTML = `<div class="alert">${t("funding_none", "Aktif fonlama uyarısı yok.")}</div>`;
     return;
   }
   fundingAlertsPanel.innerHTML = data
     .map(
       (alert) =>
         `<div class="stacked-item">` +
-        `<strong>${alert.symbol}</strong> — Missing cash: $${alert.missing_cash}<br/>` +
-        `<span>Actions: ${alert.proposed_actions}</span><br/>` +
+        `<strong>${alert.symbol}</strong> — ${format(t("funding_missing", "Eksik nakit: ${amount}"), {
+          amount: alert.missing_cash,
+        })}<br/>` +
+        `<span>${format(t("funding_actions", "Aksiyonlar: {actions}"), { actions: alert.proposed_actions })}</span><br/>` +
         `<span>${alert.created_at}</span>` +
         `</div>`
     )
@@ -135,7 +172,7 @@ async function refreshLogs() {
   const response = await fetch("/api/logs?limit=50");
   const data = await response.json();
   if (!Array.isArray(data) || data.length === 0) {
-    logBox.textContent = "No logs yet.";
+    logBox.textContent = t("logs_empty", "Henüz log yok.");
     return;
   }
   logBox.innerHTML = data

@@ -161,6 +161,13 @@ class TestCenterService:
                 message="Walk-forward geri test tamamlandı.",
                 details={"summary": report.get("summary", "")},
             )
+        except NotImplementedError as exc:
+            return TestCenterCheck(
+                name="Geri Test Kontrolü",
+                status="warn",
+                message=str(exc),
+                next_step="Backtest modülü tamamlanana kadar bu kontrol bilgilendirme amaçlıdır.",
+            )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
                 name="Geri Test Kontrolü",
