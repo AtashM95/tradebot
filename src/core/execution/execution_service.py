@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from src.core.contracts import OrderRequest, OrderResult
+from src.core.contracts import ExecutionReport, OrderRequest, OrderResult
 from src.core.data.alpaca_client import AlpacaClient
+from src.core.execution.order_manager import OrderManager
 from src.core.settings import LiveLockError, Settings, enforce_live_lock
 
 
@@ -13,6 +14,7 @@ from src.core.settings import LiveLockError, Settings, enforce_live_lock
 class ExecutionService:
     settings: Settings
     client: AlpacaClient
+    order_manager: OrderManager | None = None
     live_session_until: Optional[datetime] = None
 
     def _session_active(self) -> bool:
@@ -35,7 +37,7 @@ class ExecutionService:
         live_checkbox: bool = False,
         provided_pin: Optional[str] = None,
         provided_phrase: Optional[str] = None,
-    ) -> OrderResult:
+    ) -> ExecutionReport:
         if self.settings.app.mode == "live":
             enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
         if request.side != "buy" and request.side != "sell":
@@ -48,7 +50,7 @@ class ExecutionService:
             raise ValueError("Limit orders require limit_price.")
         if getattr(self.client, "is_mock", False):
             if self.settings.app.mode == "live":
-                return OrderResult(
+                return ExecutionReport(
                     order_id="blocked-mock",
                     symbol=request.symbol,
                     status="blocked",
@@ -56,5 +58,23 @@ class ExecutionService:
                     average_fill_price=None,
                     raw={"mock": "true"},
                 )
-            return self.client.submit_order(request)
-        return self.client.submit_order(request)
+            result = self.client.submit_order(request)
+            return ExecutionReport(
+                order_id=result.order_id,
+                symbol=result.symbol,
+                status=result.status,
+                filled_qty=result.filled_qty,
+                average_fill_price=result.average_fill_price,
+                raw=result.raw,
+            )
+        if self.order_manager:
+            return self.order_manager.submit(request)
+        result = self.client.submit_order(request)
+        return ExecutionReport(
+            order_id=result.order_id,
+            symbol=result.symbol,
+            status=result.status,
+            filled_qty=result.filled_qty,
+            average_fill_price=result.average_fill_price,
+            raw=result.raw,
+        )

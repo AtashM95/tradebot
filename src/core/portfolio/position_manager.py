@@ -48,7 +48,14 @@ class PositionManager:
                 exit_reason = "time_exit"
 
             if exit_reason:
-                request = OrderRequest(symbol=symbol, side="sell", quantity=int(trade["quantity"]))
+                idempotency_key = f"exit-{trade['id']}-{symbol}"
+                request = OrderRequest(
+                    symbol=symbol,
+                    side="sell",
+                    quantity=int(trade["quantity"]),
+                    idempotency_key=idempotency_key,
+                    client_order_id=idempotency_key,
+                )
                 self.execution.submit_order(request)
                 self.store.close_trade(int(trade["id"]))
                 actions.append(f"Exit {symbol} triggered by {exit_reason} at {latest_close:.2f}")

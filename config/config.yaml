@@ -126,3 +126,27 @@ live_safety:
   # - LIVE_UNLOCK_PIN
   confirm_phrase: "I_UNDERSTAND_LIVE_TRADING_RISK"
   session_minutes: 15
+
+circuit_breaker:
+  max_failures: 3
+  drawdown_limit: 0.15
+  cooldown_minutes: 30
+
+error_handling:
+  max_retries: 2
+  retry_delay_seconds: 2
+
+order_manager:
+  stale_order_ttl_minutes: 10
+
+slippage:
+  spread_bps: 2.0
+  fee_bps: 1.0
+
+alerts:
+  alert_cooldown_seconds: 300
+  # Optional Telegram notifier
+  # telegram_token: ""
+  # telegram_chat_id: ""
+  consecutive_losses_limit: 3
+  low_cash_threshold: 0.05
