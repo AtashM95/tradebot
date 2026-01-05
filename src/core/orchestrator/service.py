@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from src.core.contracts import FinalSignal, OrderRequest
+from src.core.contracts import FinalSignal, OrderRequest, RiskDecision
 from src.core.data.market_data import MarketDataProvider
 from src.core.data.validator import MarketDataValidator
 from src.core.ensemble.aggregator import EnsembleAggregator
@@ -29,6 +29,7 @@ from src.core.settings import Settings
 from src.core.storage.db import SQLiteStore
 from src.core.strategies.strategies import build_strategies
 from src.core.orchestrator.setup_gate import SetupGate
+from src.integrations.openai_services import NewsRiskGateService
 
 
 @dataclass
@@ -54,6 +55,7 @@ class Orchestrator:
     alert_manager: AlertManager
     sentiment_provider: SentimentProvider | None
     position_manager: PositionManager
+    news_gate_service: NewsRiskGateService | None = None
     status: str = "stopped"
     last_run_summary: dict = field(default_factory=dict)
 
@@ -151,6 +153,26 @@ class Orchestrator:
                 reasons=", ".join(final.reasons),
             )
             decision, funding = self.risk_manager.evaluate(final, portfolio)
+            if (
+                news_gate_result
+                and news_gate_result.risk_flag == "HIGH"
+                and self.settings.openai_news_gate_mode == "reduce"
+                and decision.approved
+            ):
+                factor = self.settings.openai_news_gate_reduce_factor
+                reduced_shares = int(decision.shares * factor)
+                if reduced_shares <= 0:
+                    self.store.add_log("warning", f"OpenAI news gate reduced {symbol} to zero shares.")
+                    continue
+                decision = RiskDecision(
+                    symbol=decision.symbol,
+                    outcome=decision.outcome,
+                    approved=decision.approved,
+                    shares=reduced_shares,
+                    cash_required=reduced_shares * final.entry,
+                    reasons=decision.reasons + ["OpenAI news gate reduced size"],
+                    constraints=decision.constraints,
+                )
             decisions.append(decision.model_dump())
             if funding:
                 self.store.add_funding_alert(

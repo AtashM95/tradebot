@@ -247,6 +247,14 @@ class Settings(BaseSettings):
     fred_api_key: Optional[str] = None
 
     openai_api_key: Optional[str] = None
+    openai_enabled: bool = False
+    openai_model: str = "gpt-5"
+    openai_timeout_seconds: int = 30
+    openai_max_retries: int = 5
+    openai_temperature: float = 0.2
+    openai_cache_ttl_seconds: int = 1800
+    openai_news_gate_mode: Literal["off", "veto", "reduce"] = "off"
+    openai_news_gate_reduce_factor: float = 0.5
 
     # Live unlock pin read from ENV/.env only
     live_unlock_pin: Optional[str] = None

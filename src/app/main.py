@@ -45,6 +45,7 @@ from src.core.risk.correlation import CorrelationManager
 from src.core.risk.manager import RiskManager
 from src.core.settings import Settings, load_settings
 from src.core.storage.db import SQLiteStore
+from src.integrations.openai_services import DailyOpsReporterService, NewsRiskGateService, TradeExplainerService
 
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "ui" / "templates"
@@ -254,6 +255,7 @@ def create_app(
         alert_manager=alert_manager,
         sentiment_provider=sentiment_provider,
         position_manager=position_manager,
+        news_gate_service=news_gate_service,
     )
     test_center = test_center or build_test_center(settings, use_mock=mock_mode)
 
@@ -376,7 +378,32 @@ def create_app(
         return {"symbols": cleaned}
 
     @app.post("/api/analyze", response_class=JSONResponse)
-    def analyze(payload: dict) -> dict:
+    async def analyze(payload: dict) -> dict:
+        if payload.get("explain"):
+            signal_intent = payload.get("signal_intent")
+            setup_gate_snapshot = payload.get("setup_gate")
+            indicators_snapshot = payload.get("indicators_snapshot")
+            risk_decision = payload.get("risk_decision")
+            if not all(
+                isinstance(item, dict)
+                for item in [signal_intent, setup_gate_snapshot, indicators_snapshot, risk_decision]
+            ):
+                return {"error": "Explain requires signal_intent, setup_gate, indicators_snapshot, risk_decision."}
+            explanation = await run_in_threadpool(
+                trade_explainer.explain,
+                signal_intent,
+                setup_gate_snapshot,
+                indicators_snapshot,
+                risk_decision,
+            )
+            return explanation.model_dump()
+        symbols = payload.get("symbols")
+        if not isinstance(symbols, list):
+            return {"error": "Semboller liste olmalıdır."}
+        return orchestrator.run_cycle(symbols)
+
+    @app.post("/api/run-cycle", response_class=JSONResponse)
+    def run_cycle(payload: dict) -> dict:
         symbols = payload.get("symbols")
         if not isinstance(symbols, list):
             return {"error": "Semboller liste olmalıdır."}
