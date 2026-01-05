@@ -73,7 +73,7 @@ if (stopButton) {
 
 if (saveWatchlistButton) {
   saveWatchlistButton.addEventListener("click", async () => {
-    const payload = { symbols: watchlistInput.value };
+it    const payload = { symbols: watchlistInput.value };
     const response = await fetch("/api/watchlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
