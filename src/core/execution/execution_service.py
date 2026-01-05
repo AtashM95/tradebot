@@ -22,4 +22,19 @@ class ExecutionService:
     ) -> OrderResult:
         if self.settings.app.mode == "live":
             enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
+        if request.side != "buy" and request.side != "sell":
+            raise ValueError("Order side must be buy or sell.")
+        if request.side == "sell" and request.quantity <= 0:
+            raise ValueError("Sell orders must have positive quantity.")
+        if request.side == "buy" and request.quantity <= 0:
+            raise ValueError("Buy orders must have positive quantity.")
+        if getattr(self.client, "is_mock", False):
+            return OrderResult(
+                order_id="blocked-mock",
+                symbol=request.symbol,
+                status="blocked",
+                filled_qty=0,
+                average_fill_price=None,
+                raw={"mock": "true"},
+            )
         return self.client.submit_order(request)
