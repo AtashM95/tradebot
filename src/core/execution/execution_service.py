@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import os
 from typing import Optional
 
 from src.core.contracts import ExecutionReport, OrderRequest, OrderResult
@@ -40,6 +41,13 @@ class ExecutionService:
         allow_exit_without_unlock: bool = False,
     ) -> ExecutionReport:
         if self.settings.app.mode == "live":
+            if not allow_exit_without_unlock:
+                env_unlock = os.getenv("TRADEBOT_LIVE_UNLOCK", "").strip() == "1"
+                env_pin = os.getenv("TRADEBOT_LIVE_PIN")
+                if not env_unlock or not env_pin:
+                    raise LiveLockError("LIVE kilidi: TRADEBOT_LIVE_UNLOCK=1 ve TRADEBOT_LIVE_PIN zorunludur.")
+                if self.settings.live_unlock_pin and env_pin.strip() != self.settings.live_unlock_pin.strip():
+                    raise LiveLockError("LIVE kilidi: ENV PIN doğrulanamadı.")
             if not self._session_active() and not allow_exit_without_unlock:
                 enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
         if request.side != "buy" and request.side != "sell":

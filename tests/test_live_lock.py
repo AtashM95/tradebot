@@ -6,7 +6,9 @@ from src.core.execution.execution_service import ExecutionService
 from src.core.settings import LiveLockError, Settings
 
 
-def test_live_lock_blocks_entry_without_unlock():
+def test_live_lock_blocks_entry_without_unlock(monkeypatch):
+    monkeypatch.delenv("TRADEBOT_LIVE_UNLOCK", raising=False)
+    monkeypatch.delenv("TRADEBOT_LIVE_PIN", raising=False)
     settings = Settings(app={"mode": "live"}, live_unlock_pin="1234")
     service = ExecutionService(settings=settings, client=MockAlpacaClient())
     request = OrderRequest(symbol="AAPL", side="buy", quantity=1)

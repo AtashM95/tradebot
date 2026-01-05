@@ -41,6 +41,13 @@ pip install -r requirements.txt
 
 ---
 
+# Windows 3.10 Tek Tık
+1) `install_windows.bat` çalıştırın (venv + dependencies + compileall).
+2) `run_paper.bat` ile paper modda çalıştırın.
+3) `run_dashboard.bat` aynı şekilde paneli başlatır.
+
+---
+
 # 2) Çalıştırma
 ```bash
 python -m src.app.main
@@ -65,6 +72,9 @@ python -m src.app.main
 
 ## 2.3 Live Unlock (Canlı mod güvenlik kilidi)
 - `.env` içinde `LIVE_UNLOCK_PIN` ve `LIVE_CONFIRM_PHRASE` ayarlayın.
+- Live modda emir göndermek için ayrıca aşağıdaki ENV'ler gereklidir:
+  - `TRADEBOT_LIVE_UNLOCK=1`
+  - `TRADEBOT_LIVE_PIN=<PIN>`
 - UI veya API üzerinden:
 ```bash
 curl -X POST http://127.0.0.1:5000/api/live/unlock ^
