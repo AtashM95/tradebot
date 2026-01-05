@@ -47,8 +47,18 @@ def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaCli
 
 
 def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
-    client, _ = build_clients(settings, use_mock=use_mock)
-    cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
+    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
+    if should_mock:
+        client = MockAlpacaClient()
+    else:
+        credentials = AlpacaCredentials(
+            api_key=settings.alpaca_paper_api_key,
+            secret_key=settings.alpaca_paper_secret_key,
+            trading_base_url=settings.alpaca.trading_base_url,
+            data_base_url=settings.alpaca.data_base_url,
+        )
+        client = AlpacaClient(credentials, paper=True)
+    cache = DataCache(settings.storage.cache_dir)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
