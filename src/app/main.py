@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,16 +16,24 @@ from src.core.contracts import TestCenterCheck
 from src.core.data.alpaca_client import AlpacaClient, AlpacaCredentials, MockAlpacaClient
 from src.core.data.cache import DataCache
 from src.core.data.market_data import MarketDataProvider
+from src.core.data.validator import MarketDataValidator
 from src.core.ensemble.aggregator import EnsembleAggregator
 from src.core.execution.execution_service import ExecutionService
+from src.core.execution.order_manager import OrderManager
+from src.core.execution.slippage import SlippageModel
 from src.core.features.feature_engine import FeatureEngine
+from src.core.monitoring.alerts import AlertManager
+from src.core.monitoring.circuit_breaker import CircuitBreaker
+from src.core.monitoring.error_handler import ErrorHandler
 from src.core.monitoring.health import HealthMonitor
 from src.core.monitoring.center_service import TestCenterService
+from src.core.monitoring.performance import PerformanceMonitor
 from src.core.orchestrator.service import Orchestrator
 from src.core.orchestrator.setup_gate import SetupGate
 from src.core.portfolio.position_manager import PositionManager
 from src.core.portfolio.snapshot import PortfolioSnapshot
 from src.core.portfolio.trade_queue import TradeQueue
+from src.core.risk.correlation import CorrelationManager
 from src.core.risk.manager import RiskManager
 from src.core.settings import Settings, load_settings
 from src.core.storage.db import SQLiteStore
@@ -87,7 +95,8 @@ def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterS
         max_position_weight=settings.risk.max_position_weight,
         cash_buffer=settings.risk.cash_buffer,
     )
-    execution = ExecutionService(settings=settings, client=client)
+    order_manager = OrderManager(client=client, ttl_minutes=settings.order_manager.stale_order_ttl_minutes)
+    execution = ExecutionService(settings=settings, client=client, order_manager=order_manager)
     backtester = WalkForwardBacktester(
         data_provider=data_provider,
         feature_engine=feature_engine,
@@ -120,13 +129,38 @@ def create_app(
     cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
+    data_validator = MarketDataValidator()
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
     risk_manager = RiskManager(
         risk_per_trade=settings.risk.risk_per_trade,
         max_position_weight=settings.risk.max_position_weight,
         cash_buffer=settings.risk.cash_buffer,
     )
-    execution = ExecutionService(settings=settings, client=client)
+    order_manager = OrderManager(client=client, ttl_minutes=settings.order_manager.stale_order_ttl_minutes)
+    execution = ExecutionService(settings=settings, client=client, order_manager=order_manager)
+    slippage_model = SlippageModel(
+        spread_bps=settings.slippage.spread_bps,
+        fee_bps=settings.slippage.fee_bps,
+    )
+    circuit_breaker = CircuitBreaker(
+        max_failures=settings.circuit_breaker.max_failures,
+        drawdown_limit=settings.circuit_breaker.drawdown_limit,
+        cooldown_minutes=settings.circuit_breaker.cooldown_minutes,
+    )
+    error_handler = ErrorHandler(
+        max_retries=settings.error_handling.max_retries,
+        retry_delay_seconds=settings.error_handling.retry_delay_seconds,
+    )
+    performance_monitor = PerformanceMonitor()
+    alert_manager = AlertManager(
+        cooldown_seconds=settings.alerts.alert_cooldown_seconds,
+        telegram_token=settings.alerts.telegram_token,
+        telegram_chat_id=settings.alerts.telegram_chat_id,
+    )
+    correlation_manager = CorrelationManager(
+        max_symbol_correlation=settings.risk.max_symbol_correlation,
+        max_sector_weight=settings.risk.max_sector_weight,
+    )
     store = SQLiteStore(settings.storage.database_url)
     store.seed_watchlist(settings.universe.watchlist_default)
     trade_queue = TradeQueue(store=store, ttl_hours=settings.funding_alert.trade_queue_ttl_hours)
@@ -135,6 +169,7 @@ def create_app(
         data_provider=data_provider,
         feature_engine=feature_engine,
         execution=execution,
+        performance_monitor=performance_monitor,
         store=store,
         max_hold_days=settings.trading.target_hold_days_max,
         trailing_stop_enabled=settings.risk.stop_takeprofit.trailing_stop_enabled,
@@ -144,13 +179,21 @@ def create_app(
         settings=settings,
         data_provider=data_provider,
         feature_engine=feature_engine,
+        data_validator=data_validator,
         ensemble=ensemble,
         risk_manager=risk_manager,
+        correlation_manager=correlation_manager,
         execution=execution,
+        order_manager=order_manager,
+        slippage_model=slippage_model,
         store=store,
         trade_queue=trade_queue,
         setup_gate=setup_gate,
         health_monitor=health_monitor,
+        circuit_breaker=circuit_breaker,
+        error_handler=error_handler,
+        performance_monitor=performance_monitor,
+        alert_manager=alert_manager,
         position_manager=position_manager,
     )
     test_center = test_center or build_test_center(settings, use_mock=mock_mode)
@@ -166,7 +209,7 @@ def create_app(
             "index.html",
             {
                 "mode": settings.app.mode,
-                "watchlist": settings.universe.watchlist_default,
+                "watchlist": store.get_watchlist(),
                 "risk": settings.risk.model_dump(),
                 "mock_mode": mock_mode,
                 "i18n": i18n,
@@ -219,6 +262,26 @@ def create_app(
     def stop_orchestrator() -> dict:
         orchestrator.stop()
         return {"status": orchestrator.status}
+
+    @app.post("/api/live/unlock", response_class=JSONResponse)
+    async def unlock_live(request: Request) -> dict:
+        payload = await request.json()
+        live_checkbox = bool(payload.get("live_checkbox", False))
+        provided_pin = payload.get("pin")
+        provided_phrase = payload.get("phrase")
+        try:
+            expires = execution.unlock_live_session(
+                live_checkbox=live_checkbox,
+                provided_pin=provided_pin,
+                provided_phrase=provided_phrase,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "status": "unlocked",
+            "expires_at": expires.isoformat(),
+            "active": execution._session_active(),
+        }
 
     @app.get("/api/watchlist", response_class=JSONResponse)
     def get_watchlist() -> dict:

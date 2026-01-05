@@ -47,6 +47,15 @@ python -m src.app.main
 ```
 Tarayıcıda `http://127.0.0.1:5000` adresini açın.
 
+## 2.1 Konfigürasyon
+- `.env.example` dosyasını `.env` olarak kopyalayın ve API anahtarlarını doldurun.
+- `config/config.yaml` içindeki risk, circuit breaker, slippage ve alert ayarlarını projeye göre düzenleyin.
+
+Örnek:
+```bash
+copy .env.example .env
+```
+
 ## Start/Stop runner mantığı
 - **Başlat:** Orkestratör arka planda döngüye girer ve `cycle_interval_seconds` (varsayılan 600 sn) aralığıyla analiz çalıştırır.
 - **Duraklat:** Döngü beklemeye alınır, yeni analiz yapılmaz.
@@ -54,3 +63,24 @@ Tarayıcıda `http://127.0.0.1:5000` adresini açın.
 
 ## Arayüz dili
 - Arayüz dili varsayılan olarak **Türkçe**’dir.
+
+---
+
+# 3) Testler
+```bash
+pytest -q
+```
+
+---
+
+# 4) Stress Test (CLI)
+```bash
+python scripts/run_stress_test.py --symbols AAPL,MSFT --shock -0.1
+```
+
+---
+
+# 5) Anahtar Rotasyonu (Security Note)
+- API anahtarlarınızı belirli aralıklarla değiştirin.
+- Eski anahtarları Alpaca panelinden devre dışı bırakın.
+- `.env` dosyasını **asla** commit etmeyin.
