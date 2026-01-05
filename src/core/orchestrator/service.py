@@ -144,25 +144,6 @@ class Orchestrator:
                         f"Sentiment veto for {symbol}: score {sentiment.score:.2f}",
                     )
                     continue
-            news_gate_result = None
-            if self.settings.openai_news_gate_mode != "off" and self.news_gate_service:
-                last_price = float(bars["close"].iloc[-1]) if not bars.empty else 0.0
-                volatility_proxy = float(bars["close"].pct_change().dropna().std() or 0.0)
-                news_gate_result = self.news_gate_service.evaluate(
-                    ticker=symbol,
-                    headlines=[],
-                    earnings_date=None,
-                    last_price=last_price,
-                    volatility_proxy=volatility_proxy,
-                )
-                if not news_gate_result.trade_allowed or (
-                    news_gate_result.risk_flag == "HIGH" and self.settings.openai_news_gate_mode == "veto"
-                ):
-                    self.store.add_log(
-                        "warning",
-                        f"OpenAI news gate veto for {symbol}: {', '.join(news_gate_result.reasons)}",
-                    )
-                    continue
             self.store.add_signal(
                 symbol=final.symbol,
                 score=final.score,
@@ -262,6 +243,7 @@ class Orchestrator:
                 take_profit=final.take_profit,
             )
             self.store.add_fill(trade_id, final.symbol, decision.shares, final.entry)
+            self.performance_monitor.record_trade(-est_cost)
             open_positions += 1
             self.store.add_log("info", f"Bracket order submitted for {final.symbol}.")
         self.last_run_summary = {

@@ -12,7 +12,6 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.concurrency import run_in_threadpool
 import pandas as pd
 
 from src.core.backtest.walk_forward import WalkForwardBacktester
@@ -214,9 +213,6 @@ def create_app(
         min_trend=settings.setup_gate.min_trend,
         min_rsi=settings.setup_gate.min_rsi,
     )
-    news_gate_service = NewsRiskGateService(settings=settings)
-    trade_explainer = TradeExplainerService(settings=settings)
-    daily_ops_reporter = DailyOpsReporterService(settings=settings)
     position_manager = PositionManager(
         data_provider=data_provider,
         feature_engine=feature_engine,
@@ -413,15 +409,17 @@ def create_app(
             return {"error": "Semboller liste olmalıdır."}
         return orchestrator.run_cycle(symbols)
 
+    @app.post("/api/run-cycle", response_class=JSONResponse)
+    def run_cycle(payload: dict) -> dict:
+        symbols = payload.get("symbols")
+        if not isinstance(symbols, list):
+            return {"error": "Semboller liste olmalıdır."}
+        return orchestrator.run_cycle(symbols)
+
     @app.post("/api/analyze/all", response_class=JSONResponse)
     def analyze_all() -> dict:
         symbols = store.get_watchlist()
         return orchestrator.run_cycle(symbols)
-
-    @app.post("/api/ops/report", response_class=JSONResponse)
-    async def ops_report(payload: dict) -> dict:
-        report = await run_in_threadpool(daily_ops_reporter.report, payload)
-        return report.model_dump()
 
     @app.post("/api/backtest/run", response_class=JSONResponse)
     async def run_backtest(request: Request) -> dict:

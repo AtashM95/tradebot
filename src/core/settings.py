@@ -318,8 +318,6 @@ def validate_settings(settings: Settings) -> None:
         raise ValueError("Circuit breaker max_failures must be >= 1.")
     if settings.circuit_breaker.drawdown_limit <= 0:
         raise ValueError("Circuit breaker drawdown_limit must be positive.")
-    if not 0 < settings.openai_news_gate_reduce_factor <= 1:
-        raise ValueError("OPENAI_NEWS_GATE_REDUCE_FACTOR must be between 0 and 1.")
 
 
 def enforce_live_lock(
