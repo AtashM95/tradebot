@@ -27,6 +27,7 @@ class AppSettings(BaseModel):
     port: int = 5000
     auto_open_browser: bool = True
     log_level: str = "INFO"
+    cycle_interval_seconds: int = 600
 
 
 class StorageSettings(BaseModel):
@@ -37,6 +38,7 @@ class StorageSettings(BaseModel):
     logs_dir: str = "logs"
     data_cache_format: str = "parquet"
     data_compression: str = "zstd"
+    data_cache_keep_bars: int = 300
 
 
 class AlpacaSettings(BaseModel):
@@ -162,6 +164,7 @@ class MLSettings(BaseModel):
 class LiveSafetySettings(BaseModel):
     lock_enabled: bool = True
     confirm_phrase: str = "I_UNDERSTAND_LIVE_TRADING_RISK"
+    session_minutes: int = 15
 
 
 class Settings(BaseSettings):

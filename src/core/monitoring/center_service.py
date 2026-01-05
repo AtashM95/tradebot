@@ -36,17 +36,17 @@ class TestCenterService:
         try:
             account = self.execution.client.get_account()
             return TestCenterCheck(
-                name="Account Check (paper)",
+                name="Hesap Kontrolü (deneme)",
                 status="pass",
-                message="Alpaca account reachable.",
+                message="Alpaca hesabı erişilebilir.",
                 details={"cash": str(account.get("cash", ""))},
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Account Check (paper)",
+                name="Hesap Kontrolü (deneme)",
                 status="fail",
                 message=str(exc),
-                next_step="Set ALPACA_PAPER_API_KEY and ALPACA_PAPER_SECRET_KEY in .env.",
+                next_step="ALPACA_PAPER_API_KEY ve ALPACA_PAPER_SECRET_KEY değerlerini .env içinde ayarlayın.",
             )
 
     def _data_check(self) -> TestCenterCheck:
@@ -54,17 +54,17 @@ class TestCenterService:
             bars = self.data_provider.get_daily_bars("AAPL", limit=120)
             features = self.feature_engine.compute("AAPL", bars)
             return TestCenterCheck(
-                name="Data Check",
+                name="Veri Kontrolü",
                 status="pass",
-                message="AAPL bars + features computed.",
+                message="AAPL barları ve özellikler hesaplandı.",
                 details={"close": f"{features.values['close']:.2f}"},
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Data Check",
+                name="Veri Kontrolü",
                 status="fail",
                 message=str(exc),
-                next_step="Check Alpaca data credentials or cache directory permissions.",
+                next_step="Alpaca veri kimlik bilgilerini veya cache dizini izinlerini kontrol edin.",
             )
 
     def _dry_run_check(self) -> TestCenterCheck:
@@ -78,22 +78,22 @@ class TestCenterService:
             ]
             final = self.ensemble.aggregate(intents)
             if final is None:
-                raise ValueError("No final signal generated.")
+                raise ValueError("Nihai sinyal üretilemedi.")
             portfolio = PortfolioSnapshot(cash=500.0, equity=500.0, open_positions=0)
             decision, _ = self.risk_manager.evaluate(final, portfolio)
             if not decision.approved:
-                raise ValueError("Risk manager vetoed dry-run.")
+                raise ValueError("Risk yöneticisi dry-run işlemini veto etti.")
             return TestCenterCheck(
-                name="Dry-Run Check",
+                name="Dry-Run Kontrolü",
                 status="pass",
-                message="SignalIntent + RiskDecision generated.",
+                message="SignalIntent ve RiskDecision üretildi.",
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Dry-Run Check",
+                name="Dry-Run Kontrolü",
                 status="fail",
                 message=str(exc),
-                next_step="Inspect strategy toggles and risk settings.",
+                next_step="Strateji anahtarlarını ve risk ayarlarını kontrol edin.",
             )
 
     def _paper_order_check(self) -> TestCenterCheck:
@@ -101,17 +101,17 @@ class TestCenterService:
             request = OrderRequest(symbol="SPY", side="buy", quantity=1)
             result = self.execution.submit_order(request)
             return TestCenterCheck(
-                name="Paper Order Check",
+                name="Deneme Emir Kontrolü",
                 status="pass",
-                message="Paper order submitted.",
+                message="Paper emir gönderildi.",
                 details={"order_id": result.order_id},
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Paper Order Check",
+                name="Deneme Emir Kontrolü",
                 status="fail",
                 message=str(exc),
-                next_step="Verify Alpaca paper trading keys and market hours.",
+                next_step="Alpaca paper anahtarlarını ve piyasa saatlerini doğrulayın.",
             )
 
     def _funding_alert_check(self) -> TestCenterCheck:
@@ -138,33 +138,33 @@ class TestCenterService:
             portfolio = PortfolioSnapshot(cash=50.0, equity=500.0, open_positions=5)
             decision, funding = self.risk_manager.evaluate(signal, portfolio)
             if funding is None or decision.approved:
-                raise ValueError("Funding alert not triggered.")
+                raise ValueError("Fonlama uyarısı tetiklenmedi.")
             return TestCenterCheck(
-                name="Funding Alert Check",
+                name="Fonlama Uyarısı Kontrolü",
                 status="pass",
-                message="Funding alert produced with swap/partial/queue suggestions.",
+                message="Fonlama uyarısı swap/partial/queue önerileriyle üretildi.",
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Funding Alert Check",
+                name="Fonlama Uyarısı Kontrolü",
                 status="fail",
                 message=str(exc),
-                next_step="Adjust funding alert thresholds or cash buffer settings.",
+                next_step="Fonlama eşiği veya cash buffer ayarlarını kontrol edin.",
             )
 
     def _backtest_check(self) -> TestCenterCheck:
         try:
             report = self.backtester.run(["SPY", "AAPL"], years=5)
             return TestCenterCheck(
-                name="Backtest Check",
+                name="Geri Test Kontrolü",
                 status="pass",
-                message="Walk-forward backtest completed.",
+                message="Walk-forward geri test tamamlandı.",
                 details={"summary": report.get("summary", "")},
             )
         except Exception as exc:  # noqa: BLE001
             return TestCenterCheck(
-                name="Backtest Check",
+                name="Geri Test Kontrolü",
                 status="fail",
                 message=str(exc),
-                next_step="Confirm data cache and backtest configuration.",
+                next_step="Veri cache ve geri test ayarlarını doğrulayın.",
             )
