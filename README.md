@@ -43,8 +43,9 @@ pip install -r requirements.txt
 
 # Windows 3.10 Tek Tık
 1) `install_windows.bat` çalıştırın (venv + dependencies + compileall).
-2) `run_paper.bat` ile paper modda çalıştırın.
-3) `run_dashboard.bat` aynı şekilde paneli başlatır.
+2) `.env` dosyasını doldurun (API key yoksa mock modda çalıştırılır).
+3) `run_paper.bat` ile paper modda çalıştırın.
+4) `run_dashboard.bat` aynı şekilde paneli başlatır.
 
 ---
 

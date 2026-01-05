@@ -15,6 +15,10 @@ if not exist .venv (
 call .venv\Scripts\activate
 python -m pip install -U pip
 pip install -r requirements.txt
+if errorlevel 1 (
+  echo Paket kurulumu basarisiz oldu. Lutfen internet baglantisini ve pip ayarlarini kontrol edin.
+  exit /b 1
+)
 
 if not exist .env (
   copy .env.example .env >nul
