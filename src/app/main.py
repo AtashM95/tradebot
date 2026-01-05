@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +32,24 @@ from src.core.storage.db import SQLiteStore
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "ui" / "templates"
 STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
+I18N_PATH = Path(__file__).resolve().parents[1] / "ui" / "i18n" / "tr.json"
+
+
+def load_i18n() -> dict:
+    return json.loads(I18N_PATH.read_text(encoding="utf-8"))
+
+
+def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaClient | MockAlpacaClient, bool]:
+    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
+    if should_mock:
+        return MockAlpacaClient(), True
+    credentials = AlpacaCredentials(
+        api_key=settings.alpaca_paper_api_key,
+        secret_key=settings.alpaca_paper_secret_key,
+        trading_base_url=settings.alpaca.trading_base_url,
+        data_base_url=settings.alpaca.data_base_url,
+    )
+    return AlpacaClient(credentials, paper=True), False
 
 
 def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaClient | MockAlpacaClient, bool]:
@@ -81,6 +100,7 @@ def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterS
 
 def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCenterService] = None) -> FastAPI:
     settings = settings or load_settings()
+    i18n = load_i18n()
     app = FastAPI(title="Ultimate Trading Bot v2", version="0.1.0")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -162,7 +182,8 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
             positions = orchestrator.execution.client.list_positions()
             return {**snapshot.__dict__, "positions": positions}
         except Exception as exc:  # noqa: BLE001
-            return {"error": str(exc)}
+            store.add_log("error", f"Portföy alınamadı: {exc}")
+            return {"error": "Portföy bilgisi alınamadı."}
 
     @app.get("/api/test-center/checks", response_class=JSONResponse)
     def test_center_checks() -> list[TestCenterCheck]:

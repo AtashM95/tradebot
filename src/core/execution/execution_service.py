@@ -1,17 +1,33 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Optional
 
 from src.core.contracts import OrderRequest, OrderResult
 from src.core.data.alpaca_client import AlpacaClient
-from src.core.settings import Settings, enforce_live_lock
+from src.core.settings import LiveLockError, Settings, enforce_live_lock
 
 
 @dataclass
 class ExecutionService:
     settings: Settings
     client: AlpacaClient
+    live_session_until: Optional[datetime] = None
+
+    def _session_active(self) -> bool:
+        return self.live_session_until is not None and datetime.utcnow() < self.live_session_until
+
+    def unlock_live_session(
+        self,
+        live_checkbox: bool,
+        provided_pin: Optional[str],
+        provided_phrase: Optional[str],
+    ) -> datetime:
+        enforce_live_lock(self.settings, live_checkbox, provided_pin, provided_phrase)
+        duration = timedelta(minutes=self.settings.live_safety.session_minutes)
+        self.live_session_until = datetime.utcnow() + duration
+        return self.live_session_until
 
     def submit_order(
         self,

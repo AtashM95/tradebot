@@ -1,3 +1,4 @@
+const I18N = window.I18N || {};
 const refreshButton = document.getElementById("refresh-tests");
 const testResults = document.getElementById("test-results");
 const startButton = document.getElementById("start-orchestrator");
@@ -15,19 +16,19 @@ const logBox = document.getElementById("log-box");
 const watchlistTags = document.querySelector("#watchlist .tags");
 
 async function fetchTestCenter() {
-  testResults.textContent = "Running checks...";
+  testResults.textContent = t("test_center_running", "Kontroller çalıştırılıyor...");
   try {
     const response = await fetch("/api/test-center/checks");
     const data = await response.json();
     if (!Array.isArray(data)) {
-      testResults.textContent = "Unexpected response from Test Center.";
+      testResults.textContent = t("test_center_unexpected", "Test Merkezi beklenmedik yanıt döndürdü.");
       return;
     }
     testResults.innerHTML = data
       .map(
         (check) =>
           `<div class="test-result ${check.status}">` +
-          `<strong>${check.name}</strong> — ${check.status.toUpperCase()}<br/>` +
+          `<strong>${check.name}</strong> — ${tPath(`status_labels.${check.status}`, check.status)}<br/>` +
           `<span>${check.message}</span>` +
           (check.details && check.details.mock_mode ? `<br/><em>MOCK MODE ACTIVE</em>` : "") +
           (check.next_step ? `<br/><em>${check.next_step}</em>` : "") +
@@ -35,7 +36,7 @@ async function fetchTestCenter() {
       )
       .join("");
   } catch (err) {
-    testResults.textContent = `Test Center error: ${err}`;
+    testResults.textContent = format(t("test_center_error", "Test Merkezi hatası: {error}"), { error: err });
   }
 }
 
@@ -65,7 +66,7 @@ if (pauseButton) {
 
 if (stopButton) {
   stopButton.addEventListener("click", async () => {
-    const data = await updateOrchestrator("stop");
+    const data = await updteOrchestrator("stop");
     analyzeStatus.textContent = `Orchestrator: ${data.status}`;
   });
 }
