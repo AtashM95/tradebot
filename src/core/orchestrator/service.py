@@ -221,6 +221,7 @@ class Orchestrator:
                 take_profit=final.take_profit,
             )
             self.store.add_fill(trade_id, final.symbol, decision.shares, final.entry)
+            self.performance_monitor.record_trade(-est_cost)
             open_positions += 1
             self.store.add_log("info", f"Bracket order submitted for {final.symbol}.")
         self.last_run_summary = {
