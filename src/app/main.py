@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -109,7 +109,7 @@ def create_app(
     app = FastAPI(title="Ultimate Trading Bot v2", version="0.1.0")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    health_monitor = HealthMonitor(started_at=datetime.utcnow())
+    health_monitor = HealthMonitor(started_at=datetime.now(timezone.utc))
     effective_mock = _env_mock_mode() if use_mock is None else use_mock
     client, mock_mode = build_clients(settings, use_mock=effective_mock)
     cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)

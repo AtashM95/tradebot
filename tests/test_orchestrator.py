@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.core.data.alpaca_client import MockAlpacaClient
 from src.core.data.cache import DataCache
@@ -39,7 +39,7 @@ def test_orchestrator_cycle_with_mock(tmp_path):
     store = SQLiteStore(settings.storage.database_url)
     trade_queue = TradeQueue(store=store, ttl_hours=settings.funding_alert.trade_queue_ttl_hours)
     setup_gate = SetupGate(min_trend=-1.0, min_rsi=40.0)
-    health_monitor = HealthMonitor(started_at=datetime.utcnow())
+    health_monitor = HealthMonitor(started_at=datetime.now(timezone.utc))
     position_manager = PositionManager(
         data_provider=data_provider,
         feature_engine=feature_engine,
