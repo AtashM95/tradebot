@@ -78,6 +78,8 @@ class OrderRequest(BaseModel):
     limit_price: Optional[float] = None
     time_in_force: Literal["day", "gtc"] = "day"
     client_order_id: Optional[str] = None
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
 
 
 class OrderResult(BaseModel):

@@ -1,113 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ultimate Trading Bot v2</title>
+  <title>{{ i18n["title"] }}</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <header>
     <div class="brand">
-      <h1>Ultimate Trading Bot v2</h1>
-      <span class="mode">Mode: {{ mode|upper }}</span>
+      <h1>{{ i18n["title"] }}</h1>
+      <div class="badge-row">
+        <span class="mode">{{ i18n["mode_label"].format(mode=i18n["modes"][mode]) }}</span>
+        {% if mock_mode %}
+          <span class="badge warning">{{ i18n["mock_mode_banner"] }}</span>
+        {% endif %}
+      </div>
     </div>
     <nav>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#watchlist">Watchlist</a>
-      <a href="#analyze">Analyze</a>
-      <a href="#risk">Risk</a>
-      <a href="#funding">Funding Alerts</a>
-      <a href="#backtest">Backtest</a>
-      <a href="#model-center">Model Center</a>
-      <a href="#test-center">Test Center</a>
-      <a href="#logs">Logs</a>
+      <a href="#dashboard">{{ i18n["nav_dashboard"] }}</a>
+      <a href="#watchlist">{{ i18n["nav_watchlist"] }}</a>
+      <a href="#analyze">{{ i18n["nav_analyze"] }}</a>
+      <a href="#risk">{{ i18n["nav_risk"] }}</a>
+      <a href="#funding">{{ i18n["nav_funding"] }}</a>
+      <a href="#backtest">{{ i18n["nav_backtest"] }}</a>
+      <a href="#model-center">{{ i18n["nav_model_center"] }}</a>
+      <a href="#test-center">{{ i18n["nav_test_center"] }}</a>
+      <a href="#logs">{{ i18n["nav_logs"] }}</a>
     </nav>
   </header>
 
   <main>
     <section id="dashboard" class="panel">
-      <h2>Dashboard</h2>
+      <h2>{{ i18n["dashboard_title"] }}</h2>
       <div class="grid">
         <div>
-          <h3>Quick Status</h3>
+          <h3>{{ i18n["quick_status_title"] }}</h3>
           <ul>
-            <li>Default watchlist size: {{ watchlist|length }}</li>
-            <li>Max open positions: {{ risk.max_open_positions }}</li>
-            <li>Cash buffer: {{ (risk.cash_buffer * 100)|round(1) }}%</li>
+            <li>{{ i18n["default_watchlist_size"].format(count=watchlist|length) }}</li>
+            <li>{{ i18n["max_open_positions"].format(count=risk.max_open_positions) }}</li>
+            <li>{{ i18n["cash_buffer"].format(percent=(risk.cash_buffer * 100)|round(1)) }}</li>
           </ul>
         </div>
         <div>
-          <h3>Actions</h3>
-          <button type="button" id="refresh-tests">Run Test Center</button>
-          <button type="button" disabled>Start</button>
-          <button type="button" disabled>Pause</button>
-          <button type="button" disabled>Stop</button>
+          <h3>{{ i18n["actions_title"] }}</h3>
+          <button type="button" id="refresh-tests">{{ i18n["run_test_center_button"] }}</button>
+          <button type="button" id="start-orchestrator">{{ i18n["start_button"] }}</button>
+          <button type="button" id="pause-orchestrator">{{ i18n["pause_button"] }}</button>
+          <button type="button" id="stop-orchestrator">{{ i18n["stop_button"] }}</button>
+        </div>
+        <div>
+          <h3>{{ i18n["live_unlock_title"] }}</h3>
+          <div class="form-block">
+            <label>
+              <input type="checkbox" id="live-unlock-checkbox" />
+              {{ i18n["live_unlock_checkbox"] }}
+            </label>
+            <input id="live-unlock-pin" type="password" placeholder="{{ i18n['live_unlock_pin'] }}" />
+            <input id="live-unlock-phrase" type="text" placeholder="{{ i18n['live_unlock_phrase'] }}" />
+            <button type="button" id="live-unlock-button">{{ i18n["live_unlock_button"] }}</button>
+            <div id="live-unlock-status" class="helper-text">{{ i18n["live_unlock_status"] }}</div>
+          </div>
         </div>
       </div>
     </section>
 
     <section id="watchlist" class="panel">
-      <h2>Watchlist</h2>
-      <p>Bulk paste symbols (100–200 US equities). Current default:</p>
+      <h2>{{ i18n["watchlist_title"] }}</h2>
+      <p>{{ i18n["watchlist_desc"] }}</p>
       <div class="tags">
         {% for symbol in watchlist %}
           <span>{{ symbol }}</span>
         {% endfor %}
       </div>
+      <div class="form-block">
+        <label for="watchlist-input">{{ i18n["bulk_paste_label"] }}</label>
+        <textarea id="watchlist-input" rows="4" placeholder="{{ i18n['bulk_paste_placeholder'] }}"></textarea>
+        <button type="button" id="save-watchlist">{{ i18n["save_watchlist_button"] }}</button>
+        <div id="watchlist-status" class="helper-text"></div>
+      </div>
     </section>
 
     <section id="analyze" class="panel">
-      <h2>Analyze</h2>
-      <p>Run price action gate, strategy ensemble, and risk filters.</p>
-      <button type="button" disabled>Analyze Selected</button>
-      <button type="button" disabled>Analyze All</button>
+      <h2>{{ i18n["analyze_title"] }}</h2>
+      <p>{{ i18n["analyze_desc"] }}</p>
+      <div class="form-block">
+        <label for="analyze-input">{{ i18n["analyze_label"] }}</label>
+        <input id="analyze-input" type="text" placeholder="{{ i18n['analyze_placeholder'] }}" />
+        <div class="button-row">
+          <button type="button" id="analyze-selected">{{ i18n["analyze_selected_button"] }}</button>
+          <button type="button" id="analyze-all">{{ i18n["analyze_all_button"] }}</button>
+        </div>
+        <div id="analyze-status" class="helper-text"></div>
+      </div>
     </section>
 
     <section id="risk" class="panel">
-      <h2>Risk</h2>
+      <h2>{{ i18n["risk_title"] }}</h2>
       <ul>
-        <li>Risk per trade: {{ (risk.risk_per_trade * 100)|round(2) }}%</li>
-        <li>Max position weight: {{ (risk.max_position_weight * 100)|round(1) }}%</li>
-        <li>Weekly drawdown limit: {{ (risk.weekly_max_drawdown * 100)|round(1) }}%</li>
+        <li>{{ i18n["risk_per_trade"].format(percent=(risk.risk_per_trade * 100)|round(2)) }}</li>
+        <li>{{ i18n["max_position_weight"].format(percent=(risk.max_position_weight * 100)|round(1)) }}</li>
+        <li>{{ i18n["weekly_drawdown"].format(percent=(risk.weekly_max_drawdown * 100)|round(1)) }}</li>
       </ul>
     </section>
 
     <section id="funding" class="panel">
-      <h2>Funding Alerts</h2>
-      <p>Cash shortfall handling: swap/trim → partial entry → trade queue (TTL).</p>
-      <div class="alert">No active funding alerts.</div>
+      <h2>{{ i18n["funding_title"] }}</h2>
+      <p>{{ i18n["funding_desc"] }}</p>
+      <div id="funding-alerts" class="stacked-list"></div>
     </section>
 
     <section id="backtest" class="panel">
-      <h2>Backtest</h2>
-      <p>5-year walk-forward backtest with latest holdout period.</p>
-      <button type="button" disabled>Run Backtest</button>
+      <h2>{{ i18n["backtest_title"] }}</h2>
+      <p>{{ i18n["backtest_desc"] }}</p>
+      <button type="button" disabled>{{ i18n["backtest_button"] }}</button>
     </section>
 
     <section id="model-center" class="panel">
-      <h2>Model Center</h2>
-      <p>MLOps-lite: drift monitor, incremental updates, registry, shadow tests.</p>
-      <button type="button" disabled>Open Registry</button>
+      <h2>{{ i18n["model_center_title"] }}</h2>
+      <p>{{ i18n["model_center_desc"] }}</p>
+      <button type="button" disabled>{{ i18n["model_center_button"] }}</button>
     </section>
 
     <section id="test-center" class="panel">
-      <h2>Test Center</h2>
-      <p>System checks for account, data, dry-run, orders, funding alerts, backtest.</p>
-      <div id="test-results">Click "Run Test Center" to fetch results.</div>
+      <h2>{{ i18n["test_center_title"] }}</h2>
+      <p>{{ i18n["test_center_desc"] }}</p>
+      <div id="test-results">{{ i18n["test_center_default"] }}</div>
     </section>
 
     <section id="logs" class="panel">
-      <h2>Logs</h2>
-      <p>Structured logs will appear here.</p>
-      <div class="log-box">No logs yet.</div>
+      <h2>{{ i18n["logs_title"] }}</h2>
+      <p>{{ i18n["logs_desc"] }}</p>
+      <div id="log-box" class="log-box">{{ i18n["logs_empty"] }}</div>
     </section>
   </main>
 
   <footer>
-    <span>Ultimate Trading Bot v2 — US equities only, long-only swing.</span>
+    <span>{{ i18n["footer"] }}</span>
   </footer>
 
+  <script>
+    window.I18N = {{ i18n | tojson }};
+  </script>
   <script src="/static/app.js"></script>
 </body>
 </html>

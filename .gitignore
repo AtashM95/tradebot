@@ -65,6 +65,7 @@ logs/
 
 # ---- Local data/model artifacts (runtime) ----
 data/
+!src/core/data/
 models/
 artifacts/
 reports/
