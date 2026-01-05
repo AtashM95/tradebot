@@ -23,9 +23,20 @@ from src.core.risk.manager import RiskManager
 from src.core.sentiment.provider import SentimentProvider
 from src.core.settings import FundingAlertSettings, RiskSettings, Settings, StorageSettings, TradingConstraints
 from src.core.storage.db import SQLiteStore
+from src.integrations.openai_schemas import NewsRiskGateResult
 
 
-def test_orchestrator_cycle_with_mock(tmp_path):
+class StubNewsGate:
+    def evaluate(self, *args, **kwargs) -> NewsRiskGateResult:
+        return NewsRiskGateResult(
+            risk_flag="HIGH",
+            trade_allowed=False,
+            reasons=["Earnings risk"],
+            confidence=0.9,
+        )
+
+
+def test_news_gate_veto_blocks_trade(tmp_path):
     db_path = tmp_path / "tradebot.db"
     cache_dir = tmp_path / "cache"
     settings = Settings(
@@ -33,6 +44,8 @@ def test_orchestrator_cycle_with_mock(tmp_path):
         risk=RiskSettings(risk_per_trade=0.01, max_position_weight=0.2, cash_buffer=0.05),
         funding_alert=FundingAlertSettings(trade_queue_ttl_hours=24),
         trading=TradingConstraints(target_hold_days_max=14),
+        openai_enabled=True,
+        openai_news_gate_mode="veto",
     )
     client = MockAlpacaClient()
     cache = DataCache(settings.storage.cache_dir)
@@ -76,7 +89,7 @@ def test_orchestrator_cycle_with_mock(tmp_path):
         ensemble=ensemble,
         risk_manager=risk_manager,
         correlation_manager=correlation_manager,
-        sector_map={"AAPL": "Tech", "MSFT": "Tech"},
+        sector_map={"AAPL": "Tech"},
         execution=execution,
         order_manager=order_manager,
         slippage_model=slippage_model,
@@ -90,8 +103,10 @@ def test_orchestrator_cycle_with_mock(tmp_path):
         alert_manager=alert_manager,
         sentiment_provider=sentiment_provider,
         position_manager=position_manager,
+        news_gate_service=StubNewsGate(),
     )
     orchestrator.start()
     result = orchestrator.run_cycle(["AAPL"])
     assert result["processed"] == 1
-    assert "decisions" in result
+    assert result["decisions"] == []
+    assert store.list_open_trades() == []

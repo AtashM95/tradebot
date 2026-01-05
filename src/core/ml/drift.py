@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from importlib.util import find_spec
+import sys
 from typing import Dict, List
 
 import numpy as np
@@ -38,17 +40,22 @@ def detect_drift(baseline_df: pd.DataFrame, current_df: pd.DataFrame, alpha: flo
     drifted_features: list[str] = []
     scores: dict[str, float] = {}
     method_used = "percentile_shift"
-    try:
-        from scipy.stats import ks_2samp
+    scipy_available = sys.modules.get("scipy") is not None and find_spec("scipy") is not None
+    if scipy_available:
+        try:
+            from scipy.stats import ks_2samp
 
-        method_used = "ks_test"
-        for col in numeric_cols:
-            stat = ks_2samp(baseline_df[col].dropna(), current_df[col].dropna())
-            score = 1 - stat.pvalue
-            scores[col] = float(score)
-            if stat.pvalue < alpha:
-                drifted_features.append(col)
-    except Exception:  # noqa: BLE001
+            method_used = "ks_test"
+            for col in numeric_cols:
+                stat = ks_2samp(baseline_df[col].dropna(), current_df[col].dropna())
+                score = 1 - stat.pvalue
+                scores[col] = float(score)
+                if stat.pvalue < alpha:
+                    drifted_features.append(col)
+        except Exception:  # noqa: BLE001
+            method_used = "percentile_shift"
+            scipy_available = False
+    if not scipy_available:
         for col in numeric_cols:
             base = baseline_df[col].dropna().to_numpy()
             curr = current_df[col].dropna().to_numpy()
