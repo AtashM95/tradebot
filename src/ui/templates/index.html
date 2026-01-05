@@ -9,11 +9,11 @@
 <body>
   <header>
     <div class="brand">
-      <h1>{{ i18n["title"] }}</h1>
+      <h1>Ultimate Trading Bot v2</h1>
       <div class="badge-row">
-        <span class="mode">{{ i18n["mode_label"].format(mode=i18n["modes"][mode]) }}</span>
+        <span class="mode">Mode: {{ mode|upper }}</span>
         {% if mock_mode %}
-          <span class="badge warning">{{ i18n["mock_mode_banner"] }}</span>
+          <span class="badge warning">MOCK MODE</span>
         {% endif %}
       </div>
     </div>
@@ -43,24 +43,11 @@
           </ul>
         </div>
         <div>
-          <h3>{{ i18n["actions_title"] }}</h3>
-          <button type="button" id="refresh-tests">{{ i18n["run_test_center_button"] }}</button>
-          <button type="button" id="start-orchestrator">{{ i18n["start_button"] }}</button>
-          <button type="button" id="pause-orchestrator">{{ i18n["pause_button"] }}</button>
-          <button type="button" id="stop-orchestrator">{{ i18n["stop_button"] }}</button>
-        </div>
-        <div>
-          <h3>{{ i18n["live_unlock_title"] }}</h3>
-          <div class="form-block">
-            <label>
-              <input type="checkbox" id="live-unlock-checkbox" />
-              {{ i18n["live_unlock_checkbox"] }}
-            </label>
-            <input id="live-unlock-pin" type="password" placeholder="{{ i18n['live_unlock_pin'] }}" />
-            <input id="live-unlock-phrase" type="text" placeholder="{{ i18n['live_unlock_phrase'] }}" />
-            <button type="button" id="live-unlock-button">{{ i18n["live_unlock_button"] }}</button>
-            <div id="live-unlock-status" class="helper-text">{{ i18n["live_unlock_status"] }}</div>
-          </div>
+          <h3>Actions</h3>
+          <button type="button" id="refresh-tests">Run Test Center</button>
+          <button type="button" id="start-orchestrator">Start</button>
+          <button type="button" id="pause-orchestrator">Pause</button>
+          <button type="button" id="stop-orchestrator">Stop</button>
         </div>
       </div>
     </section>
@@ -74,22 +61,22 @@
         {% endfor %}
       </div>
       <div class="form-block">
-        <label for="watchlist-input">{{ i18n["bulk_paste_label"] }}</label>
-        <textarea id="watchlist-input" rows="4" placeholder="{{ i18n['bulk_paste_placeholder'] }}"></textarea>
-        <button type="button" id="save-watchlist">{{ i18n["save_watchlist_button"] }}</button>
+        <label for="watchlist-input">Bulk Paste</label>
+        <textarea id="watchlist-input" rows="4" placeholder="AAPL, MSFT, NVDA..."></textarea>
+        <button type="button" id="save-watchlist">Save Watchlist</button>
         <div id="watchlist-status" class="helper-text"></div>
       </div>
     </section>
 
     <section id="analyze" class="panel">
-      <h2>{{ i18n["analyze_title"] }}</h2>
-      <p>{{ i18n["analyze_desc"] }}</p>
+      <h2>Analyze</h2>
+      <p>Run price action gate, strategy ensemble, and risk filters.</p>
       <div class="form-block">
-        <label for="analyze-input">{{ i18n["analyze_label"] }}</label>
-        <input id="analyze-input" type="text" placeholder="{{ i18n['analyze_placeholder'] }}" />
+        <label for="analyze-input">Symbols to analyze (optional)</label>
+        <input id="analyze-input" type="text" placeholder="AAPL MSFT NVDA" />
         <div class="button-row">
-          <button type="button" id="analyze-selected">{{ i18n["analyze_selected_button"] }}</button>
-          <button type="button" id="analyze-all">{{ i18n["analyze_all_button"] }}</button>
+          <button type="button" id="analyze-selected">Analyze Selected</button>
+          <button type="button" id="analyze-all">Analyze All</button>
         </div>
         <div id="analyze-status" class="helper-text"></div>
       </div>
@@ -105,8 +92,8 @@
     </section>
 
     <section id="funding" class="panel">
-      <h2>{{ i18n["funding_title"] }}</h2>
-      <p>{{ i18n["funding_desc"] }}</p>
+      <h2>Funding Alerts</h2>
+      <p>Cash shortfall handling: swap/trim → partial entry → trade queue (TTL).</p>
       <div id="funding-alerts" class="stacked-list"></div>
     </section>
 
@@ -129,9 +116,9 @@
     </section>
 
     <section id="logs" class="panel">
-      <h2>{{ i18n["logs_title"] }}</h2>
-      <p>{{ i18n["logs_desc"] }}</p>
-      <div id="log-box" class="log-box">{{ i18n["logs_empty"] }}</div>
+      <h2>Logs</h2>
+      <p>Structured logs will appear here.</p>
+      <div id="log-box" class="log-box">No logs yet.</div>
     </section>
   </main>
 

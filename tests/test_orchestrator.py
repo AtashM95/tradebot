@@ -61,9 +61,8 @@ def test_orchestrator_cycle_with_mock(tmp_path):
         setup_gate=setup_gate,
         health_monitor=health_monitor,
         position_manager=position_manager,
-        cycle_interval_seconds=1,
     )
-    orchestrator.status = "running"
+    orchestrator.start()
     result = orchestrator.run_cycle(["AAPL"])
     assert result["processed"] == 1
     assert "decisions" in result
