@@ -13,6 +13,7 @@ from src.core.portfolio.snapshot import PortfolioSnapshot
 from src.core.risk.manager import RiskManager
 from src.core.strategies.strategies import build_strategies
 from src.core.data.market_data import MarketDataProvider
+from src.core.settings import StrategyToggles
 
 
 @dataclass
@@ -21,6 +22,7 @@ class WalkForwardBacktester:
     feature_engine: Optional[FeatureEngine] = None
     ensemble: Optional[EnsembleAggregator] = None
     risk_manager: Optional[RiskManager] = None
+    strategy_toggles: Optional[StrategyToggles] = None
     initial_cash: float = 100000.0
     train_days: int = 504
     test_days: int = 126
@@ -91,7 +93,11 @@ class WalkForwardBacktester:
         for idx in range(len(test_slice)):
             history = pd.concat([train_slice, test_slice.iloc[: idx + 1]])
             features = feature_engine.compute(symbol, history)
-            intents = [signal for strategy in build_strategies() if (signal := strategy.generate(features))]
+            intents = [
+                signal
+                for strategy in build_strategies(self.strategy_toggles)
+                if (signal := strategy.generate(features))
+            ]
             final = ensemble.aggregate(intents)
             bar = test_slice.iloc[idx]
             if shares > 0:
