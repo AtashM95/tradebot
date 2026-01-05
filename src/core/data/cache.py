@@ -10,8 +10,6 @@ import pandas as pd
 @dataclass
 class DataCache:
     base_dir: str | Path
-    compression: str | None = "zstd"
-    keep_last_bars: int = 300
 
     def __post_init__(self) -> None:
         self.base_path = Path(self.base_dir)
@@ -29,5 +27,4 @@ class DataCache:
 
     def save_daily_bars(self, symbol: str, bars: pd.DataFrame) -> None:
         path = self.base_path / "bars" / f"{symbol}.parquet"
-        trimmed = bars.tail(self.keep_last_bars).reset_index(drop=True)
-        trimmed.to_parquet(path, index=False, compression=self.compression)
+        bars.to_parquet(path, index=False)

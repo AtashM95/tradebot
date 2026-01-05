@@ -86,10 +86,5 @@
     "running": "çalışıyor",
     "paused": "duraklatıldı",
     "stopped": "durduruldu"
-  },
-  "log_levels": {
-    "info": "BİLGİ",
-    "warning": "UYARI",
-    "error": "HATA"
   }
 }

@@ -6,7 +6,6 @@ from datetime import datetime
 from src.core.contracts import OrderRequest
 from src.core.data.market_data import MarketDataProvider
 from src.core.execution.execution_service import ExecutionService
-from src.core.settings import LiveLockError
 from src.core.features.feature_engine import FeatureEngine
 from src.core.storage.db import SQLiteStore
 
@@ -39,7 +38,7 @@ class PositionManager:
                 if new_stop > stop:
                     self.store.update_trade_stop(int(trade["id"]), new_stop)
                     stop = new_stop
-                    actions.append(f"{symbol} için iz süren stop güncellendi -> {new_stop:.2f}")
+                    actions.append(f"Trailing stop updated for {symbol} -> {new_stop:.2f}")
             exit_reason = None
             if latest_close <= stop:
                 exit_reason = "stop_loss"
@@ -49,16 +48,8 @@ class PositionManager:
                 exit_reason = "time_exit"
 
             if exit_reason:
-                reason_label = {
-                    "stop_loss": "zarar durdur",
-                    "take_profit": "kâr al",
-                    "time_exit": "süre doldu",
-                }.get(exit_reason, exit_reason)
                 request = OrderRequest(symbol=symbol, side="sell", quantity=int(trade["quantity"]))
-                try:
-                    self.execution.submit_order(request)
-                    self.store.close_trade(int(trade["id"]))
-                    actions.append(f"{symbol} çıkışı tetiklendi ({reason_label}) -> {latest_close:.2f}")
-                except LiveLockError as exc:
-                    actions.append(f"{symbol} çıkışı engellendi: {exc}")
+                self.execution.submit_order(request)
+                self.store.close_trade(int(trade["id"]))
+                actions.append(f"Exit {symbol} triggered by {exit_reason} at {latest_close:.2f}")
         return actions

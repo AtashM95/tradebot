@@ -16,9 +16,9 @@ class SetupGate:
         close = features.values.get("close", 0.0)
         ema_slow = features.values.get("ema_slow", close)
         if trend <= self.min_trend:
-            return False, "Trend pozitif değil"
+            return False, "Trend not positive"
         if rsi < self.min_rsi:
-            return False, "RSI momentum eşiğinin altında"
+            return False, "RSI below momentum threshold"
         if close < ema_slow:
-            return False, "Fiyat yavaş EMA altında"
-        return True, "Fiyat aksiyonu kapısı geçti"
+            return False, "Price below slow EMA"
+        return True, "Price action gate passed"
