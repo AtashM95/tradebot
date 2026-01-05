@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -39,45 +40,47 @@ def load_i18n() -> dict:
     return json.loads(I18N_PATH.read_text(encoding="utf-8"))
 
 
-def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaClient | MockAlpacaClient, bool]:
-    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
-    if should_mock:
-        return MockAlpacaClient(), True
-    credentials = AlpacaCredentials(
-        api_key=settings.alpaca_paper_api_key,
-        secret_key=settings.alpaca_paper_secret_key,
-        trading_base_url=settings.alpaca.trading_base_url,
-        data_base_url=settings.alpaca.data_base_url,
-    )
-    return AlpacaClient(credentials, paper=True), False
+def _env_mock_mode() -> bool:
+    return os.getenv("TRADEBOT_MOCK_MODE", "").strip().lower() in {"1", "true", "yes"}
 
 
 def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaClient | MockAlpacaClient, bool]:
-    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
-    if should_mock:
+    if use_mock:
         return MockAlpacaClient(), True
-    credentials = AlpacaCredentials(
-        api_key=settings.alpaca_paper_api_key,
-        secret_key=settings.alpaca_paper_secret_key,
-        trading_base_url=settings.alpaca.trading_base_url,
-        data_base_url=settings.alpaca.data_base_url,
-    )
-    return AlpacaClient(credentials, paper=True), False
 
+    mode = settings.app.mode
+    if mode == "live":
+        if not settings.alpaca_live_api_key or not settings.alpaca_live_secret_key:
+            raise ValueError(
+                "LIVE modunda ALPACA_LIVE_API_KEY ve ALPACA_LIVE_SECRET_KEY zorunludur."
+            )
+        credentials = AlpacaCredentials(
+            api_key=settings.alpaca_live_api_key,
+            secret_key=settings.alpaca_live_secret_key,
+            trading_base_url=settings.alpaca.trading_base_url,
+            data_base_url=settings.alpaca.data_base_url,
+        )
+        return AlpacaClient(credentials, paper=False), False
 
-def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
-    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
-    if should_mock:
-        client = MockAlpacaClient()
-    else:
+    if mode == "paper":
+        if not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key:
+            raise ValueError(
+                "PAPER modunda ALPACA_PAPER_API_KEY ve ALPACA_PAPER_SECRET_KEY zorunludur."
+            )
         credentials = AlpacaCredentials(
             api_key=settings.alpaca_paper_api_key,
             secret_key=settings.alpaca_paper_secret_key,
             trading_base_url=settings.alpaca.trading_base_url,
             data_base_url=settings.alpaca.data_base_url,
         )
-        client = AlpacaClient(credentials, paper=True)
-    cache = DataCache(settings.storage.cache_dir)
+        return AlpacaClient(credentials, paper=True), False
+
+    return MockAlpacaClient(), True
+
+
+def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
+    client, _ = build_clients(settings, use_mock=use_mock)
+    cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
@@ -98,14 +101,19 @@ def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterS
     )
 
 
-def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCenterService] = None) -> FastAPI:
+def create_app(
+    settings: Optional[Settings] = None,
+    test_center: Optional[TestCenterService] = None,
+    use_mock: Optional[bool] = None,
+) -> FastAPI:
     settings = settings or load_settings()
     i18n = load_i18n()
     app = FastAPI(title="Ultimate Trading Bot v2", version="0.1.0")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     health_monitor = HealthMonitor(started_at=datetime.utcnow())
-    client, mock_mode = build_clients(settings, use_mock=False)
+    effective_mock = _env_mock_mode() if use_mock is None else use_mock
+    client, mock_mode = build_clients(settings, use_mock=effective_mock)
     cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
@@ -158,6 +166,7 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
                 "watchlist": settings.universe.watchlist_default,
                 "risk": settings.risk.model_dump(),
                 "mock_mode": mock_mode,
+                "i18n": i18n,
             },
         )
 
@@ -219,16 +228,16 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
             raw = symbols.replace(",", " ").split()
             symbols = [symbol.strip().upper() for symbol in raw if symbol.strip()]
         if not isinstance(symbols, list):
-            return {"error": "symbols must be a list or string."}
+            return {"error": "Semboller liste veya metin olmalıdır."}
         cleaned = []
         for symbol in symbols:
             if not symbol.isalpha() or len(symbol) > 5:
                 continue
             cleaned.append(symbol.upper())
         if not 1 <= len(cleaned) <= settings.universe.watchlist_max_size:
-            return {"error": "Watchlist size must be between 1 and 200 symbols."}
+            return {"error": "İzleme listesi 1 ile 200 sembol arasında olmalıdır."}
         if len(cleaned) < 100:
-            store.add_log("warning", "Watchlist below recommended 100 symbols for diversification.")
+            store.add_log("warning", "İzleme listesi çeşitlendirme için önerilen 100 sembolün altında.")
         store.set_watchlist(cleaned)
         return {"symbols": cleaned}
 
@@ -236,7 +245,7 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
     def analyze(payload: dict) -> dict:
         symbols = payload.get("symbols")
         if not isinstance(symbols, list):
-            return {"error": "symbols must be a list."}
+            return {"error": "Semboller liste olmalıdır."}
         return orchestrator.run_cycle(symbols)
 
     @app.post("/api/analyze/all", response_class=JSONResponse)
@@ -275,7 +284,7 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
     return app
 
 
-app = create_app()
+app = create_app(use_mock=_env_mock_mode())
 
 
 if __name__ == "__main__":
