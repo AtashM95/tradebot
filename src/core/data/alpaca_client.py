@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import numpy as np
 import pandas as pd
-from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockBarsRequest
-from alpaca.data.timeframe import TimeFrame
-from alpaca.trading.client import TradingClient
-from alpaca.trading.enums import OrderClass, TimeInForce
-from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLossRequest, TakeProfitRequest
 
 from src.core.contracts import OrderRequest, OrderResult
+
+if TYPE_CHECKING:
+    from alpaca.data.historical import StockHistoricalDataClient
+    from alpaca.trading.client import TradingClient
 
 
 @dataclass(frozen=True)
@@ -26,13 +25,20 @@ class AlpacaCredentials:
 
 class AlpacaClient:
     def __init__(self, credentials: AlpacaCredentials, paper: bool = True) -> None:
-        self._trading = TradingClient(
+        try:
+            from alpaca.data.historical import StockHistoricalDataClient
+            from alpaca.trading.client import TradingClient
+        except ImportError as exc:
+            raise ImportError(
+                "alpaca-py is required for AlpacaClient. Install with: pip install alpaca-py"
+            ) from exc
+        self._trading: TradingClient = TradingClient(
             credentials.api_key,
             credentials.secret_key,
             paper=paper,
             url_override=credentials.trading_base_url,
         )
-        self._data = StockHistoricalDataClient(
+        self._data: StockHistoricalDataClient = StockHistoricalDataClient(
             credentials.api_key,
             credentials.secret_key,
             url_override=credentials.data_base_url,
@@ -43,6 +49,9 @@ class AlpacaClient:
         return account.model_dump()
 
     def get_daily_bars(self, symbol: str, limit: int = 200) -> pd.DataFrame:
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+
         request = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, limit=limit)
         response = self._data.get_stock_bars(request)
         bars = response.data.get(symbol, [])
@@ -53,7 +62,29 @@ class AlpacaClient:
         df["ts"] = pd.to_datetime(df["ts"], utc=True)
         return df[["ts", "open", "high", "low", "close", "volume"]]
 
+    def get_daily_bars_batch(self, symbols: list[str], limit: int = 200) -> dict[str, pd.DataFrame]:
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+
+        if not symbols:
+            return {}
+        request = StockBarsRequest(symbol_or_symbols=symbols, timeframe=TimeFrame.Day, limit=limit)
+        response = self._data.get_stock_bars(request)
+        data: dict[str, pd.DataFrame] = {}
+        for symbol in symbols:
+            bars = response.data.get(symbol, [])
+            if not bars:
+                continue
+            df = pd.DataFrame([bar.model_dump() for bar in bars])
+            df = df.rename(columns={"timestamp": "ts"})
+            df["ts"] = pd.to_datetime(df["ts"], utc=True)
+            data[symbol] = df[["ts", "open", "high", "low", "close", "volume"]]
+        return data
+
     def submit_order(self, request: OrderRequest) -> OrderResult:
+        from alpaca.trading.enums import OrderClass, TimeInForce
+        from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLossRequest, TakeProfitRequest
+
         time_in_force = self._map_time_in_force(request.time_in_force)
         base_payload = {
             "symbol": request.symbol,
@@ -62,7 +93,7 @@ class AlpacaClient:
             "time_in_force": time_in_force,
             "client_order_id": request.client_order_id,
         }
-        bracket_payload = self._build_bracket_payload(request)
+        bracket_payload = self._build_bracket_payload(request, OrderClass, StopLossRequest, TakeProfitRequest)
         if request.order_type == "market":
             order = MarketOrderRequest(**base_payload, **bracket_payload)
         elif request.order_type == "limit":
@@ -83,7 +114,9 @@ class AlpacaClient:
         )
 
     @staticmethod
-    def _map_time_in_force(time_in_force: str) -> TimeInForce | str:
+    def _map_time_in_force(time_in_force: str) -> str:
+        from alpaca.trading.enums import TimeInForce
+
         mapping = {
             "day": TimeInForce.DAY,
             "gtc": TimeInForce.GTC,
@@ -91,19 +124,27 @@ class AlpacaClient:
         return mapping.get(time_in_force, time_in_force)
 
     @staticmethod
-    def _build_bracket_payload(request: OrderRequest) -> dict:
+    def _build_bracket_payload(
+        request: OrderRequest,
+        order_class: type,
+        stop_loss_request: type,
+        take_profit_request: type,
+    ) -> dict:
         if request.stop_loss is None and request.take_profit is None:
             return {}
-        payload: dict = {"order_class": OrderClass.BRACKET}
+        payload: dict = {"order_class": order_class.BRACKET}
         if request.take_profit is not None:
-            payload["take_profit"] = TakeProfitRequest(limit_price=request.take_profit)
+            payload["take_profit"] = take_profit_request(limit_price=request.take_profit)
         if request.stop_loss is not None:
-            payload["stop_loss"] = StopLossRequest(stop_price=request.stop_loss)
+            payload["stop_loss"] = stop_loss_request(stop_price=request.stop_loss)
         return payload
 
     def list_positions(self) -> list[dict]:
         positions = self._trading.get_all_positions()
         return [position.model_dump() for position in positions]
+
+    def cancel_order(self, order_id: str) -> None:
+        self._trading.cancel_order_by_id(order_id)
 
 
 class MockAlpacaClient:
@@ -138,6 +179,9 @@ class MockAlpacaClient:
             }
         )
 
+    def get_daily_bars_batch(self, symbols: list[str], limit: int = 200) -> dict[str, pd.DataFrame]:
+        return {symbol: self.get_daily_bars(symbol, limit=limit) for symbol in symbols}
+
     def submit_order(self, request: OrderRequest) -> OrderResult:
         return OrderResult(
             order_id=f"mock-{uuid4()}",
@@ -150,3 +194,6 @@ class MockAlpacaClient:
 
     def list_positions(self) -> list[dict]:
         return []
+
+    def cancel_order(self, order_id: str) -> None:
+        return None

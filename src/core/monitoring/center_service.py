@@ -11,6 +11,7 @@ from src.core.risk.manager import RiskManager
 from src.core.strategies.strategies import build_strategies
 from src.core.backtest.walk_forward import WalkForwardBacktester
 from src.core.execution.execution_service import ExecutionService
+from src.core.settings import StrategyToggles
 
 
 @dataclass
@@ -21,6 +22,7 @@ class TestCenterService:
     risk_manager: RiskManager
     execution: ExecutionService
     backtester: WalkForwardBacktester
+    strategy_toggles: StrategyToggles | None = None
 
     def run_checks(self) -> list[TestCenterCheck]:
         checks: list[TestCenterCheck] = []
@@ -73,7 +75,7 @@ class TestCenterService:
             features = self.feature_engine.compute("MSFT", bars)
             intents = [
                 signal
-                for strategy in build_strategies()
+                for strategy in build_strategies(self.strategy_toggles)
                 if (signal := strategy.generate(features)) is not None
             ]
             final = self.ensemble.aggregate(intents)
