@@ -264,6 +264,7 @@ def load_settings(config_path: str = "config/config.yaml") -> Settings:
     Env vars will always take priority over dotenv, and dotenv/env override YAML. 4
     """
     cfg = _read_yaml(Path(config_path))
+    _apply_backward_compat(cfg)
     # YAML -> Settings kwargs (lowest priority)
     settings = Settings(**cfg)
     env_mode = os.getenv("APP_MODE")
@@ -275,6 +276,20 @@ def load_settings(config_path: str = "config/config.yaml") -> Settings:
             raise ValueError(f"Invalid APP_MODE value: {env_mode}")
     validate_settings(settings)
     return settings
+
+
+def _apply_backward_compat(cfg: Dict[str, Any]) -> None:
+    ml_cfg = cfg.get("ml")
+    if not isinstance(ml_cfg, dict):
+        return
+    retrain_cfg = ml_cfg.pop("retrain", None)
+    if isinstance(retrain_cfg, dict):
+        ml_cfg.setdefault("retrain_schedule", retrain_cfg.get("schedule", ml_cfg.get("retrain_schedule", "weekly")))
+        ml_cfg.setdefault("retrain_on_drift", retrain_cfg.get("on_drift", ml_cfg.get("retrain_on_drift", True)))
+        ml_cfg.setdefault(
+            "retrain_on_performance_drop",
+            retrain_cfg.get("on_performance_drop", ml_cfg.get("retrain_on_performance_drop", True)),
+        )
 
 
 class LiveLockError(RuntimeError):

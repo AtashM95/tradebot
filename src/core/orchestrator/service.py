@@ -174,10 +174,13 @@ class Orchestrator:
             candidate_weight = (decision.shares * final.entry) / max(portfolio.equity, 1)
             holdings = {pos["symbol"]: float(pos.get("market_value", 0)) / max(equity, 1) for pos in self.execution.client.list_positions()}
             price_history = {final.symbol: bars}
-            for held_symbol in holdings:
-                if held_symbol == final.symbol:
+            held_symbols = [symbol for symbol in holdings if symbol != final.symbol]
+            if held_symbols:
+                try:
+                    price_history.update(self.data_provider.get_daily_bars_batch(held_symbols, limit=160))
+                except ValueError as exc:
+                    self.store.add_log("warning", f"Price history fetch failed: {exc}")
                     continue
-                price_history[held_symbol] = self.data_provider.get_daily_bars(held_symbol, limit=160)
             corr_ok, corr_reason = self.correlation_manager.check_symbol(
                 final.symbol,
                 candidate_weight,

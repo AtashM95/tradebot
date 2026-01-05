@@ -26,4 +26,8 @@ if not exist .env (
 )
 
 python -m compileall src
+if errorlevel 1 (
+  echo compileall basarisiz oldu. Lutfen Python kurulumunu ve dosya izinlerini kontrol edin.
+  exit /b 1
+)
 echo Kurulum tamamlandi.

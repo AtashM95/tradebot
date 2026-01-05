@@ -62,6 +62,25 @@ class AlpacaClient:
         df["ts"] = pd.to_datetime(df["ts"], utc=True)
         return df[["ts", "open", "high", "low", "close", "volume"]]
 
+    def get_daily_bars_batch(self, symbols: list[str], limit: int = 200) -> dict[str, pd.DataFrame]:
+        from alpaca.data.requests import StockBarsRequest
+        from alpaca.data.timeframe import TimeFrame
+
+        if not symbols:
+            return {}
+        request = StockBarsRequest(symbol_or_symbols=symbols, timeframe=TimeFrame.Day, limit=limit)
+        response = self._data.get_stock_bars(request)
+        data: dict[str, pd.DataFrame] = {}
+        for symbol in symbols:
+            bars = response.data.get(symbol, [])
+            if not bars:
+                continue
+            df = pd.DataFrame([bar.model_dump() for bar in bars])
+            df = df.rename(columns={"timestamp": "ts"})
+            df["ts"] = pd.to_datetime(df["ts"], utc=True)
+            data[symbol] = df[["ts", "open", "high", "low", "close", "volume"]]
+        return data
+
     def submit_order(self, request: OrderRequest) -> OrderResult:
         from alpaca.trading.enums import OrderClass, TimeInForce
         from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLossRequest, TakeProfitRequest
@@ -159,6 +178,9 @@ class MockAlpacaClient:
                 "volume": volume,
             }
         )
+
+    def get_daily_bars_batch(self, symbols: list[str], limit: int = 200) -> dict[str, pd.DataFrame]:
+        return {symbol: self.get_daily_bars(symbol, limit=limit) for symbol in symbols}
 
     def submit_order(self, request: OrderRequest) -> OrderResult:
         return OrderResult(

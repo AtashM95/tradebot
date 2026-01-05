@@ -456,6 +456,17 @@ def create_app(
         report = detect_drift(baseline_df, current_df, alpha=float(payload.get("alpha", 0.05)))
         return report.model_dump()
 
+    def _resolve_registry_artifact(registry: ModelRegistry, artifact_path: str) -> Path:
+        base_dir = registry.base_dir.resolve()
+        candidate = Path(artifact_path).expanduser()
+        if not candidate.is_absolute():
+            candidate = (base_dir / candidate).resolve()
+        else:
+            candidate = candidate.resolve()
+        if base_dir not in candidate.parents and candidate != base_dir:
+            raise HTTPException(status_code=400, detail="artifact_path must be inside registry_dir.")
+        return candidate
+
     @app.post("/api/models/shadow-test", response_class=JSONResponse)
     async def shadow_test(request: Request) -> dict:
         payload = await request.json()
@@ -471,8 +482,10 @@ def create_app(
         active_entry = models.get(active_id) if active_id else registry.get_active_model()
         if not candidate_entry or not active_entry:
             raise HTTPException(status_code=400, detail="Candidate or active model not found.")
-        candidate_model = pickle.load(Path(candidate_entry["artifact_path"]).open("rb"))
-        active_model = pickle.load(Path(active_entry["artifact_path"]).open("rb"))
+        candidate_path = _resolve_registry_artifact(registry, candidate_entry["artifact_path"])
+        active_path = _resolve_registry_artifact(registry, active_entry["artifact_path"])
+        candidate_model = pickle.load(candidate_path.open("rb"))
+        active_model = pickle.load(active_path.open("rb"))
         tester = ShadowTester(days=settings.ml.shadow_test.days)
         features_arr = pd.DataFrame(features).to_numpy()
         target_arr = pd.Series(target).to_numpy()

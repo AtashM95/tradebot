@@ -232,7 +232,6 @@ class FibonacciPullbackStrategy(Strategy):
         confidence = min(0.6 + proximity_score * 0.25 + trend_score + volume_bonus, 0.9)
         reasons = [f"Fib pullback to {closest_name} level", "Trend aligned"]
         return _build_intent(features, confidence, reasons, self.name)
-        return None
 
 
 @dataclass(frozen=True)
