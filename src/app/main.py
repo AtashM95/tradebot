@@ -104,7 +104,11 @@ def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaCli
 
 def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
     client, _ = build_clients(settings, use_mock=use_mock)
-    cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
+    cache = DataCache(
+        resolve_path(settings.storage.cache_dir),
+        compression=settings.storage.data_compression,
+        data_format=settings.storage.data_cache_format,
+    )
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
@@ -147,7 +151,11 @@ def create_app(
     health_monitor = HealthMonitor(started_at=datetime.now(timezone.utc))
     effective_mock = _env_mock_mode() if use_mock is None else use_mock
     client, mock_mode = build_clients(settings, use_mock=effective_mock)
-    cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
+    cache = DataCache(
+        resolve_path(settings.storage.cache_dir),
+        compression=settings.storage.data_compression,
+        data_format=settings.storage.data_cache_format,
+    )
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     data_validator = MarketDataValidator()
