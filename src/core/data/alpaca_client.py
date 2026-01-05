@@ -76,6 +76,8 @@ class AlpacaClient:
 
 
 class MockAlpacaClient:
+    is_mock = True
+
     def get_account(self) -> dict:
         return {
             "id": "mock-account",

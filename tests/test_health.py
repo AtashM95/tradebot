@@ -7,7 +7,7 @@ from src.core.settings import load_settings
 def test_health_endpoint():
     settings = load_settings()
     test_center = build_test_center(settings, use_mock=True)
-    app = create_app(settings=settings, test_center=test_center)
+    app = create_app(settings=settings, test_center=test_center, use_mock=True)
     client = TestClient(app)
     response = client.get("/health")
     assert response.status_code == 200
