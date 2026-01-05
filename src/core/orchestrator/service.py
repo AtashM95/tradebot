@@ -161,9 +161,6 @@ class Orchestrator:
                         f"OpenAI news gate veto for {symbol}: {', '.join(news_gate_result.reasons)}",
                     )
                     continue
-                if self.settings.openai_news_gate_mode == "reduce" and news_gate_result.risk_flag == "HIGH":
-                    final.score = final.score * self.settings.openai_news_gate_reduce_factor
-                    final.reasons.append("OpenAI news gate reduced score")
             self.store.add_signal(
                 symbol=final.symbol,
                 score=final.score,
@@ -175,8 +172,8 @@ class Orchestrator:
             decision, funding = self.risk_manager.evaluate(final, portfolio)
             if (
                 news_gate_result
-                and news_gate_result.risk_flag == "HIGH"
                 and self.settings.openai_news_gate_mode == "reduce"
+                and news_gate_result.risk_flag == "HIGH"
                 and decision.approved
             ):
                 factor = self.settings.openai_news_gate_reduce_factor
