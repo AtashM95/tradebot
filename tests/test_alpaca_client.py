@@ -14,9 +14,11 @@ class DummyResponse:
 class DummyTradingClient:
     def __init__(self) -> None:
         self.last_order = None
+        self.called_with_kwargs = False
 
-    def submit_order(self, order_data=None, **_kwargs):
-        self.last_order = order_data
+    def submit_order(self, *args, **kwargs):
+        self.called_with_kwargs = "order_data" in kwargs
+        self.last_order = kwargs.get("order_data") or (args[0] if args else None)
         return DummyResponse()
 
 
@@ -45,6 +47,7 @@ def test_submit_bracket_market_order_includes_bracket_fields():
     )
     client.submit_order(request)
     order = client._trading.last_order
+    assert client._trading.called_with_kwargs is True
     assert isinstance(order, MarketOrderRequest)
     assert order.order_class == OrderClass.BRACKET
     assert order.take_profit.limit_price == 165.0
@@ -64,6 +67,7 @@ def test_submit_limit_order_uses_limit_request():
     )
     client.submit_order(request)
     order = client._trading.last_order
+    assert client._trading.called_with_kwargs is True
     assert isinstance(order, LimitOrderRequest)
     assert order.limit_price == 310.5
     assert order.time_in_force == TimeInForce.GTC
