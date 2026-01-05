@@ -6,7 +6,7 @@ from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
-Direction = Literal["LONG"]
+SignalSide = Literal["LONG", "FLAT"]
 SignalStrength = Literal["weak", "medium", "strong"]
 OrderSide = Literal["buy", "sell"]
 OrderType = Literal["market", "limit"]
@@ -28,6 +28,12 @@ class BarSeries(BaseModel):
     bars: List[Bar]
 
 
+class MarketDataFrame(BaseModel):
+    symbol: str
+    timeframe: str
+    bars: List[Bar]
+
+
 class Features(BaseModel):
     schema_version: str = "v1"
     symbol: str
@@ -37,7 +43,7 @@ class Features(BaseModel):
 
 class SignalIntent(BaseModel):
     symbol: str
-    direction: Direction = "LONG"
+    side: SignalSide = "LONG"
     confidence: float
     entry: float
     stop: float
@@ -50,7 +56,7 @@ class SignalIntent(BaseModel):
 
 class FinalSignal(BaseModel):
     symbol: str
-    direction: Direction = "LONG"
+    side: SignalSide = "LONG"
     score: float
     entry: float
     stop: float
@@ -78,6 +84,7 @@ class OrderRequest(BaseModel):
     limit_price: Optional[float] = None
     time_in_force: Literal["day", "gtc"] = "day"
     client_order_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
 
@@ -97,6 +104,17 @@ class FillEvent(BaseModel):
     quantity: int
     price: float
     filled_at: datetime
+
+
+class ExecutionReport(BaseModel):
+    order_id: str
+    symbol: str
+    status: str
+    filled_qty: int
+    average_fill_price: Optional[float] = None
+    idempotency_key: Optional[str] = None
+    submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    raw: Dict[str, str] = Field(default_factory=dict)
 
 
 class FundingAlert(BaseModel):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.core.backtest.walk_forward import WalkForwardBacktester
 
@@ -58,3 +59,12 @@ def test_walk_forward_deterministic_output():
     first = backtester.run(["AAPL"], years=1)
     second = backtester.run(["AAPL"], years=1)
     assert first["aggregate"] == second["aggregate"]
+    assert first["aggregate"] == {
+        "total_return": pytest.approx(0.0),
+        "max_drawdown": pytest.approx(0.0),
+        "win_rate": pytest.approx(0.0),
+        "profit_factor": pytest.approx(0.0),
+        "sharpe": pytest.approx(0.0),
+        "trades": pytest.approx(0.0),
+        "equity_samples": 80,
+    }

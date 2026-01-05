@@ -28,6 +28,19 @@ class RiskManager:
                 None,
             )
         risk_per_share = signal.entry - signal.stop
+        if risk_per_share <= 0:
+            return (
+                RiskDecision(
+                    symbol=signal.symbol,
+                    outcome="veto",
+                    approved=False,
+                    shares=0,
+                    cash_required=0.0,
+                    reasons=["Invalid risk per share"],
+                    constraints={},
+                ),
+                None,
+            )
         equity = portfolio.equity
         max_cash = equity * self.max_position_weight
         target_risk_cash = equity * self.risk_per_trade

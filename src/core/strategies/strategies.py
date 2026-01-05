@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.core.contracts import Features, SignalIntent
+from src.core.settings import StrategyToggles
 from src.core.strategies.base import Strategy
 
 
@@ -231,7 +232,6 @@ class FibonacciPullbackStrategy(Strategy):
         confidence = min(0.6 + proximity_score * 0.25 + trend_score + volume_bonus, 0.9)
         reasons = [f"Fib pullback to {closest_name} level", "Trend aligned"]
         return _build_intent(features, confidence, reasons, self.name)
-        return None
 
 
 @dataclass(frozen=True)
@@ -248,13 +248,21 @@ class VolumeConfirmationStrategy(Strategy):
         return None
 
 
-def build_strategies() -> list[Strategy]:
-    return [
-        TrendFollowingStrategy(),
-        BreakoutStrategy(),
-        PullbackRetestStrategy(),
-        RSIMomentumStrategy(),
-        CandlePatternStrategy(),
-        FibonacciPullbackStrategy(),
-        VolumeConfirmationStrategy(),
-    ]
+def build_strategies(toggles: StrategyToggles | None = None) -> list[Strategy]:
+    toggles = toggles or StrategyToggles()
+    strategies: list[Strategy] = []
+    if toggles.enable_trend_following:
+        strategies.append(TrendFollowingStrategy())
+    if toggles.enable_breakout:
+        strategies.append(BreakoutStrategy())
+    if toggles.enable_pullback_retest:
+        strategies.append(PullbackRetestStrategy())
+    if toggles.enable_rsi_momentum:
+        strategies.append(RSIMomentumStrategy())
+    if toggles.enable_candle_patterns:
+        strategies.append(CandlePatternStrategy())
+    if toggles.enable_fib_pullback:
+        strategies.append(FibonacciPullbackStrategy())
+    if toggles.enable_volume_confirm:
+        strategies.append(VolumeConfirmationStrategy())
+    return strategies
