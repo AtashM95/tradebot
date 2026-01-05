@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 from typing import Any, Dict, List, Literal, Optional
 
 import yaml
@@ -119,6 +120,14 @@ class EnsembleSettings(BaseModel):
 
 class SentimentSettings(BaseModel):
     enabled: bool = True
+    provider: Literal["finnhub", "newsapi"] = "finnhub"
+    min_score: float = -0.2
+    cache_ttl_seconds: int = 900
+
+
+class SetupGateSettings(BaseModel):
+    min_trend: float = 0.0
+    min_rsi: float = 45.0
 
 
 class MLValidationSettings(BaseModel):
@@ -126,6 +135,7 @@ class MLValidationSettings(BaseModel):
     walk_forward_enabled: bool = True
     train_window_days: int = 504
     test_window_days: int = 126
+    step_window_days: int = 63
 
 
 class MLDriftThresholds(BaseModel):
@@ -147,6 +157,7 @@ class MLShadowTestSettings(BaseModel):
 class MLRegistrySettings(BaseModel):
     enabled: bool = True
     promotion_policy: Literal["paper_pass_then_manual"] = "paper_pass_then_manual"
+    directory: str = "models/registry"
 
 
 class MLSettings(BaseModel):
@@ -165,6 +176,34 @@ class LiveSafetySettings(BaseModel):
     lock_enabled: bool = True
     confirm_phrase: str = "I_UNDERSTAND_LIVE_TRADING_RISK"
     session_minutes: int = 15
+
+
+class CircuitBreakerSettings(BaseModel):
+    max_failures: int = 3
+    drawdown_limit: float = 0.15
+    cooldown_minutes: int = 30
+
+
+class ErrorHandlingSettings(BaseModel):
+    max_retries: int = 2
+    retry_delay_seconds: int = 2
+
+
+class OrderManagerSettings(BaseModel):
+    stale_order_ttl_minutes: int = 10
+
+
+class SlippageSettings(BaseModel):
+    spread_bps: float = 2.0
+    fee_bps: float = 1.0
+
+
+class AlertSettings(BaseModel):
+    alert_cooldown_seconds: int = 300
+    telegram_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    consecutive_losses_limit: int = 3
+    low_cash_threshold: float = 0.05
 
 
 class Settings(BaseSettings):
@@ -186,9 +225,16 @@ class Settings(BaseSettings):
     strategies: StrategyToggles = Field(default_factory=StrategyToggles)
     ensemble: EnsembleSettings = Field(default_factory=EnsembleSettings)
     sentiment: SentimentSettings = Field(default_factory=SentimentSettings)
+    setup_gate: SetupGateSettings = Field(default_factory=SetupGateSettings)
     ml: MLSettings = Field(default_factory=MLSettings)
     live_safety: LiveSafetySettings = Field(default_factory=LiveSafetySettings)
     notifications_enabled: bool = True
+    circuit_breaker: CircuitBreakerSettings = Field(default_factory=CircuitBreakerSettings)
+    error_handling: ErrorHandlingSettings = Field(default_factory=ErrorHandlingSettings)
+    order_manager: OrderManagerSettings = Field(default_factory=OrderManagerSettings)
+    slippage: SlippageSettings = Field(default_factory=SlippageSettings)
+    alerts: AlertSettings = Field(default_factory=AlertSettings)
+    sector_map_path: str = "config/sector_map.json"
 
     # ---- Secrets / keys (from ENV/.env) ----
     alpaca_paper_api_key: Optional[str] = None
@@ -219,11 +265,36 @@ def load_settings(config_path: str = "config/config.yaml") -> Settings:
     """
     cfg = _read_yaml(Path(config_path))
     # YAML -> Settings kwargs (lowest priority)
-    return Settings(**cfg)
+    settings = Settings(**cfg)
+    env_mode = os.getenv("APP_MODE")
+    if env_mode:
+        normalized = env_mode.strip().lower()
+        if normalized in {"backtest", "paper", "live"}:
+            settings.app.mode = normalized  # type: ignore[assignment]
+        else:
+            raise ValueError(f"Invalid APP_MODE value: {env_mode}")
+    validate_settings(settings)
+    return settings
 
 
 class LiveLockError(RuntimeError):
     pass
+
+
+def validate_settings(settings: Settings) -> None:
+    if settings.app.mode == "live" and settings.live_safety.lock_enabled:
+        if not settings.live_unlock_pin:
+            raise ValueError("LIVE mode requires LIVE_UNLOCK_PIN in env/.env.")
+    if settings.risk.max_open_positions <= 0:
+        raise ValueError("MAX_OPEN_POSITIONS must be positive.")
+    if not 0 < settings.risk.max_position_weight <= 1:
+        raise ValueError("MAX_POSITION_WEIGHT must be between 0 and 1.")
+    if not 0 < settings.risk.max_sector_weight <= 1:
+        raise ValueError("MAX_SECTOR_WEIGHT must be between 0 and 1.")
+    if settings.circuit_breaker.max_failures < 1:
+        raise ValueError("Circuit breaker max_failures must be >= 1.")
+    if settings.circuit_breaker.drawdown_limit <= 0:
+        raise ValueError("Circuit breaker drawdown_limit must be positive.")
 
 
 def enforce_live_lock(
