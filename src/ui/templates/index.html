@@ -10,7 +10,12 @@
   <header>
     <div class="brand">
       <h1>Ultimate Trading Bot v2</h1>
-      <span class="mode">Mode: {{ mode|upper }}</span>
+      <div class="badge-row">
+        <span class="mode">Mode: {{ mode|upper }}</span>
+        {% if mock_mode %}
+          <span class="badge warning">MOCK MODE</span>
+        {% endif %}
+      </div>
     </div>
     <nav>
       <a href="#dashboard">Dashboard</a>
@@ -40,9 +45,9 @@
         <div>
           <h3>Actions</h3>
           <button type="button" id="refresh-tests">Run Test Center</button>
-          <button type="button" disabled>Start</button>
-          <button type="button" disabled>Pause</button>
-          <button type="button" disabled>Stop</button>
+          <button type="button" id="start-orchestrator">Start</button>
+          <button type="button" id="pause-orchestrator">Pause</button>
+          <button type="button" id="stop-orchestrator">Stop</button>
         </div>
       </div>
     </section>
@@ -55,13 +60,26 @@
           <span>{{ symbol }}</span>
         {% endfor %}
       </div>
+      <div class="form-block">
+        <label for="watchlist-input">Bulk Paste</label>
+        <textarea id="watchlist-input" rows="4" placeholder="AAPL, MSFT, NVDA..."></textarea>
+        <button type="button" id="save-watchlist">Save Watchlist</button>
+        <div id="watchlist-status" class="helper-text"></div>
+      </div>
     </section>
 
     <section id="analyze" class="panel">
       <h2>Analyze</h2>
       <p>Run price action gate, strategy ensemble, and risk filters.</p>
-      <button type="button" disabled>Analyze Selected</button>
-      <button type="button" disabled>Analyze All</button>
+      <div class="form-block">
+        <label for="analyze-input">Symbols to analyze (optional)</label>
+        <input id="analyze-input" type="text" placeholder="AAPL MSFT NVDA" />
+        <div class="button-row">
+          <button type="button" id="analyze-selected">Analyze Selected</button>
+          <button type="button" id="analyze-all">Analyze All</button>
+        </div>
+        <div id="analyze-status" class="helper-text"></div>
+      </div>
     </section>
 
     <section id="risk" class="panel">
@@ -76,7 +94,7 @@
     <section id="funding" class="panel">
       <h2>Funding Alerts</h2>
       <p>Cash shortfall handling: swap/trim → partial entry → trade queue (TTL).</p>
-      <div class="alert">No active funding alerts.</div>
+      <div id="funding-alerts" class="stacked-list"></div>
     </section>
 
     <section id="backtest" class="panel">
@@ -100,7 +118,7 @@
     <section id="logs" class="panel">
       <h2>Logs</h2>
       <p>Structured logs will appear here.</p>
-      <div class="log-box">No logs yet.</div>
+      <div id="log-box" class="log-box">No logs yet.</div>
     </section>
   </main>
 
