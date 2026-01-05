@@ -29,3 +29,28 @@ Bot, 100–200 sembollük watchlist’i analiz eder; en iyi fırsatları seçer;
 ```bash
 git clone <REPO_URL>
 cd <REPO_FOLDER>
+```
+
+## 1.3 Bağımlılıkları yükle
+```bash
+py -3.10 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -U pip
+pip install -r requirements.txt
+```
+
+---
+
+# 2) Çalıştırma
+```bash
+python -m src.app.main
+```
+Tarayıcıda `http://127.0.0.1:5000` adresini açın.
+
+## Start/Stop runner mantığı
+- **Başlat:** Orkestratör arka planda döngüye girer ve `cycle_interval_seconds` (varsayılan 600 sn) aralığıyla analiz çalıştırır.
+- **Duraklat:** Döngü beklemeye alınır, yeni analiz yapılmaz.
+- **Durdur:** Döngü tamamen kapanır.
+
+## Arayüz dili
+- Arayüz dili varsayılan olarak **Türkçe**’dir.

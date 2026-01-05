@@ -8,6 +8,7 @@ app:
   port: 5000
   auto_open_browser: true
   log_level: "INFO"
+  cycle_interval_seconds: 600
 
 storage:
   database_url: "sqlite:///data/trading_bot.db"
@@ -17,6 +18,7 @@ storage:
   logs_dir: "logs"
   data_cache_format: "parquet"
   data_compression: "zstd"
+  data_cache_keep_bars: 300
 
 alpaca:
   # NOTE: Keys are read from ENV:
@@ -123,3 +125,4 @@ live_safety:
   # PIN is read from ENV:
   # - LIVE_UNLOCK_PIN
   confirm_phrase: "I_UNDERSTAND_LIVE_TRADING_RISK"
+  session_minutes: 15
