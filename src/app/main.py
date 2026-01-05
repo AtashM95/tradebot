@@ -64,9 +64,7 @@ def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaCli
 
     if mode == "paper":
         if not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key:
-            raise ValueError(
-                "PAPER modunda ALPACA_PAPER_API_KEY ve ALPACA_PAPER_SECRET_KEY zorunludur."
-            )
+            return MockAlpacaClient(), True
         credentials = AlpacaCredentials(
             api_key=settings.alpaca_paper_api_key,
             secret_key=settings.alpaca_paper_secret_key,

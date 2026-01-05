@@ -7,10 +7,8 @@ from dataclasses import dataclass
 class WalkForwardBacktester:
     def run(self, symbols: list[str], years: int = 5) -> dict:
         if not symbols:
-            raise ValueError("Backtest requires at least one symbol.")
-        return {
-            "summary": f"Walk-forward backtest on {len(symbols)} symbols for {years} years.",
-            "sharpe": 1.1,
-            "max_drawdown": -0.12,
-            "win_rate": 0.53,
-        }
+            raise ValueError("Geri test için en az bir sembol gereklidir.")
+        raise NotImplementedError(
+            "Walk-forward geri test henüz uygulanmadı. Lütfen Test Center üzerinden devre dışı "
+            "olduğunu göz önünde bulundurun veya backtest modülünü yapılandırın."
+        )
