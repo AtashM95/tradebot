@@ -144,6 +144,26 @@ class Orchestrator:
                         f"Sentiment veto for {symbol}: score {sentiment.score:.2f}",
                     )
                     continue
+            news_gate_result = None
+            if self.settings.openai_news_gate_mode != "off" and self.news_gate_service:
+                last_price = float(bars["close"].iloc[-1]) if not bars.empty else 0.0
+                volatility_proxy = float(bars["close"].pct_change().dropna().std() or 0.0)
+                news_gate_result = self.news_gate_service.evaluate(
+                    ticker=symbol,
+                    headlines=[],
+                    earnings_date=None,
+                    last_price=last_price,
+                    volatility_proxy=volatility_proxy,
+                )
+                if self.settings.openai_news_gate_mode == "veto" and not news_gate_result.trade_allowed:
+                    self.store.add_log(
+                        "warning",
+                        f"OpenAI news gate veto for {symbol}: {', '.join(news_gate_result.reasons)}",
+                    )
+                    continue
+                if self.settings.openai_news_gate_mode == "reduce" and news_gate_result.risk_flag == "HIGH":
+                    final.score = final.score * self.settings.openai_news_gate_reduce_factor
+                    final.reasons.append("OpenAI news gate reduced score")
             self.store.add_signal(
                 symbol=final.symbol,
                 score=final.score,

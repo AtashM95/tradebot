@@ -20,6 +20,9 @@ class CircuitBreaker:
         now = datetime.now(timezone.utc)
         if self.manual_override_until and now < self.manual_override_until:
             return True, "manual_override"
+        if self.halted_until and now >= self.halted_until:
+            self.halted_until = None
+            self.last_reason = ""
         if self.halted_until and now < self.halted_until:
             return False, self.last_reason or "cooldown"
         if drawdown >= self.drawdown_limit:

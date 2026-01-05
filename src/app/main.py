@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 import pandas as pd
 
 from src.core.backtest.walk_forward import WalkForwardBacktester
@@ -420,6 +421,11 @@ def create_app(
     def analyze_all() -> dict:
         symbols = store.get_watchlist()
         return orchestrator.run_cycle(symbols)
+
+    @app.post("/api/ops/report", response_class=JSONResponse)
+    async def ops_report(payload: dict) -> dict:
+        report = await run_in_threadpool(daily_ops_reporter.report, payload)
+        return report.model_dump()
 
     @app.post("/api/backtest/run", response_class=JSONResponse)
     async def run_backtest(request: Request) -> dict:
