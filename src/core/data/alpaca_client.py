@@ -105,6 +105,9 @@ class AlpacaClient:
         positions = self._trading.get_all_positions()
         return [position.model_dump() for position in positions]
 
+    def cancel_order(self, order_id: str) -> None:
+        self._trading.cancel_order_by_id(order_id)
+
 
 class MockAlpacaClient:
     is_mock = True
@@ -150,3 +153,6 @@ class MockAlpacaClient:
 
     def list_positions(self) -> list[dict]:
         return []
+
+    def cancel_order(self, order_id: str) -> None:
+        return None

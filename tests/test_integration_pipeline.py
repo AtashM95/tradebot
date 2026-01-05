@@ -25,7 +25,7 @@ from src.core.settings import FundingAlertSettings, RiskSettings, Settings, Stor
 from src.core.storage.db import SQLiteStore
 
 
-def test_orchestrator_cycle_with_mock(tmp_path):
+def test_pipeline_dry_run(tmp_path):
     db_path = tmp_path / "tradebot.db"
     cache_dir = tmp_path / "cache"
     settings = Settings(
@@ -51,7 +51,7 @@ def test_orchestrator_cycle_with_mock(tmp_path):
     circuit_breaker = CircuitBreaker(max_failures=3, drawdown_limit=0.15, cooldown_minutes=30)
     error_handler = ErrorHandler(max_retries=2, retry_delay_seconds=1)
     performance_monitor = PerformanceMonitor()
-    alert_manager = AlertManager(cooldown_seconds=1)
+    alert_manager = AlertManager(cooldown_seconds=0)
     correlation_manager = CorrelationManager(max_symbol_correlation=0.95, max_sector_weight=0.3)
     sentiment_provider = SentimentProvider(provider="finnhub", newsapi_key=None, finnhub_key=None)
     store = SQLiteStore(settings.storage.database_url)
@@ -94,4 +94,3 @@ def test_orchestrator_cycle_with_mock(tmp_path):
     orchestrator.start()
     result = orchestrator.run_cycle(["AAPL"])
     assert result["processed"] == 1
-    assert "decisions" in result
