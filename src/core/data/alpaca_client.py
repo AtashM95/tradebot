@@ -6,6 +6,11 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockBarsRequest
+from alpaca.data.timeframe import TimeFrame
+from alpaca.trading.client import TradingClient
+from alpaca.trading.requests import MarketOrderRequest
 
 from src.core.contracts import OrderRequest, OrderResult
 
@@ -20,9 +25,6 @@ class AlpacaCredentials:
 
 class AlpacaClient:
     def __init__(self, credentials: AlpacaCredentials, paper: bool = True) -> None:
-        from alpaca.data.historical import StockHistoricalDataClient
-        from alpaca.trading.client import TradingClient
-
         self._trading = TradingClient(
             credentials.api_key,
             credentials.secret_key,
@@ -34,16 +36,12 @@ class AlpacaClient:
             credentials.secret_key,
             url_override=credentials.data_base_url,
         )
-        self.is_mock = False
 
     def get_account(self) -> dict:
         account = self._trading.get_account()
         return account.model_dump()
 
     def get_daily_bars(self, symbol: str, limit: int = 200) -> pd.DataFrame:
-        from alpaca.data.requests import StockBarsRequest
-        from alpaca.data.timeframe import TimeFrame
-
         request = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, limit=limit)
         response = self._data.get_stock_bars(request)
         bars = response.data.get(symbol, [])
@@ -55,25 +53,12 @@ class AlpacaClient:
         return df[["ts", "open", "high", "low", "close", "volume"]]
 
     def submit_order(self, request: OrderRequest) -> OrderResult:
-        from alpaca.trading.requests import MarketOrderRequest, OrderRequest as AlpacaOrderRequest
-
-        if request.stop_loss or request.take_profit:
-            order = AlpacaOrderRequest(
-                symbol=request.symbol,
-                qty=request.quantity,
-                side=request.side,
-                type="market",
-                time_in_force=request.time_in_force,
-                take_profit={"limit_price": str(request.take_profit)} if request.take_profit else None,
-                stop_loss={"stop_price": str(request.stop_loss)} if request.stop_loss else None,
-            )
-        else:
-            order = MarketOrderRequest(
-                symbol=request.symbol,
-                qty=request.quantity,
-                side=request.side,
-                time_in_force=request.time_in_force,
-            )
+        order = MarketOrderRequest(
+            symbol=request.symbol,
+            qty=request.quantity,
+            side=request.side,
+            time_in_force=request.time_in_force,
+        )
         response = self._trading.submit_order(order)
         data = response.model_dump()
         return OrderResult(
@@ -91,16 +76,12 @@ class AlpacaClient:
 
 
 class MockAlpacaClient:
-    def __init__(self) -> None:
-        self.is_mock = True
-
     def get_account(self) -> dict:
         return {
             "id": "mock-account",
             "cash": "100000",
             "equity": "100000",
             "status": "ACTIVE",
-            "positions": 0,
         }
 
     def get_daily_bars(self, symbol: str, limit: int = 200) -> pd.DataFrame:

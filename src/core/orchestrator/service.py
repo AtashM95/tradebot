@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import threading
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -35,60 +34,26 @@ class Orchestrator:
     setup_gate: SetupGate
     health_monitor: HealthMonitor
     position_manager: PositionManager
-    cycle_interval_seconds: int
     status: str = "stopped"
     last_run_summary: dict = field(default_factory=dict)
-    _thread: threading.Thread | None = None
-    _stop_event: threading.Event = field(default_factory=threading.Event)
-    _pause_event: threading.Event = field(default_factory=threading.Event)
 
     def start(self) -> None:
-        if self._thread and self._thread.is_alive():
-            self._pause_event.clear()
-            self.status = "running"
-            self.store.add_log("info", "Orkestratör devam ediyor.")
-            return
-        self._stop_event.clear()
-        self._pause_event.clear()
         self.status = "running"
-        self.store.add_log("info", "Orkestratör başlatıldı.")
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-        self._thread.start()
+        self.store.add_log("info", "Orchestrator started.")
 
     def pause(self) -> None:
         self.status = "paused"
-        self._pause_event.set()
-        self.store.add_log("warning", "Orkestratör duraklatıldı.")
+        self.store.add_log("warning", "Orchestrator paused.")
 
     def stop(self) -> None:
         self.status = "stopped"
-        self._stop_event.set()
-        self._pause_event.clear()
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=2)
-        self.store.add_log("warning", "Orkestratör durduruldu.")
-
-    def _run_loop(self) -> None:
-        while not self._stop_event.is_set():
-            if self._pause_event.is_set():
-                self._stop_event.wait(1.0)
-                continue
-            symbols = self.store.get_watchlist()
-            if not symbols:
-                self.store.add_log("warning", "Watchlist boş, analiz atlandı.")
-            else:
-                try:
-                    self.run_cycle(symbols)
-                except Exception as exc:  # noqa: BLE001
-                    self.store.add_log("error", f"Çalışma döngüsü hatası: {exc}")
-            if self._stop_event.wait(self.cycle_interval_seconds):
-                break
+        self.store.add_log("warning", "Orchestrator stopped.")
 
     def run_cycle(self, symbols: Iterable[str]) -> dict:
         if self.status != "running":
-            return {"status": self.status, "processed": 0, "message": "Orkestratör çalışmıyor."}
+            return {"status": self.status, "processed": 0, "message": "Orchestrator not running."}
 
-        self.store.add_log("info", "Analiz döngüsü başlatıldı.")
+        self.store.add_log("info", "Starting analysis cycle.")
         self.health_monitor.tick()
         exit_actions = self.position_manager.evaluate_exits()
         for action in exit_actions:
@@ -103,14 +68,14 @@ class Orchestrator:
         decisions = []
         for symbol in symbols:
             if open_positions >= max_positions:
-                self.store.add_log("warning", "Maksimum açık pozisyon sınırı aşıldı; yeni girişler atlandı.")
+                self.store.add_log("warning", "Max open positions reached; skipping new entries.")
                 break
             processed += 1
             bars = self.data_provider.get_daily_bars(symbol, limit=160)
             features = self.feature_engine.compute(symbol, bars)
             allowed, reason = self.setup_gate.allow(features)
             if not allowed:
-                self.store.add_log("info", f"Kurulum kapısı {symbol} için engelledi: {reason}")
+                self.store.add_log("info", f"Setup gate blocked {symbol}: {reason}")
                 continue
             intents = []
             for strategy in build_strategies():
@@ -119,7 +84,7 @@ class Orchestrator:
                     intents.append(signal)
             final = self.ensemble.aggregate(intents)
             if final is None:
-                self.store.add_log("info", f"{symbol} için nihai sinyal yok.")
+                self.store.add_log("info", f"No final signal for {symbol}.")
                 continue
             self.store.add_signal(
                 symbol=final.symbol,
@@ -141,14 +106,14 @@ class Orchestrator:
                 self.trade_queue.enqueue(final.symbol, final.model_dump())
                 if self.settings.funding_alert.desktop_notifications:
                     notification = send_desktop_notification(
-                        "Fonlama Uyarısı",
-                        f"{final.symbol}: eksik ${funding.missing_cash:.2f}",
+                        "Funding Alert",
+                        f"{final.symbol}: missing ${funding.missing_cash:.2f}",
                     )
-                    self.store.add_log("info", f"Masaüstü bildirimi: {notification.detail}")
-                self.store.add_log("warning", f"{final.symbol} için nakit yetersiz; işlem kuyruğa alındı.")
+                    self.store.add_log("info", f"Desktop notify: {notification.detail}")
+                self.store.add_log("warning", f"Funding alert for {final.symbol}; queued trade.")
                 continue
             if not decision.approved:
-                self.store.add_log("warning", f"{final.symbol} için risk veto: {decision.reasons}")
+                self.store.add_log("warning", f"Risk veto for {final.symbol}: {decision.reasons}")
                 continue
             order = OrderRequest(
                 symbol=final.symbol,
@@ -159,7 +124,7 @@ class Orchestrator:
             )
             result = self.execution.submit_order(order)
             if result.status == "blocked":
-                self.store.add_log("warning", f"{final.symbol} için emir bloklandı (mock mod).")
+                self.store.add_log("warning", f"Order blocked for {final.symbol} (mock mode).")
                 continue
             trade_id = self.store.add_trade(
                 symbol=final.symbol,
@@ -171,7 +136,7 @@ class Orchestrator:
             )
             self.store.add_fill(trade_id, final.symbol, decision.shares, final.entry)
             open_positions += 1
-            self.store.add_log("info", f"{final.symbol} için bracket emir gönderildi.")
+            self.store.add_log("info", f"Bracket order submitted for {final.symbol}.")
         self.last_run_summary = {
             "status": "completed",
             "processed": processed,

@@ -86,16 +86,5 @@
     "running": "çalışıyor",
     "paused": "duraklatıldı",
     "stopped": "durduruldu"
-  },
-  "log_levels": {
-    "info": "BİLGİ",
-    "warning": "UYARI",
-    "error": "HATA"
-  },
-  "network_error": "Ağ hatası: {error}",
-  "api_error": "API hatası: {error}",
-  "orchestrator_error": "Orkestratör isteği başarısız: {error}",
-  "watchlist_load_error": "İzleme listesi yüklenemedi: {error}",
-  "funding_load_error": "Fonlama uyarıları alınamadı: {error}",
-  "logs_load_error": "Loglar alınamadı: {error}"
+  }
 }

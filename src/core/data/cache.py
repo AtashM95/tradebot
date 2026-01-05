@@ -10,8 +10,7 @@ import pandas as pd
 @dataclass
 class DataCache:
     base_dir: str | Path
-    compression: bool = False
-    keep_last_bars: int = 300
+    compression: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.base_path = Path(self.base_dir)
@@ -19,21 +18,14 @@ class DataCache:
         (self.base_path / "bars").mkdir(parents=True, exist_ok=True)
 
     def load_daily_bars(self, symbol: str, limit: int) -> Optional[pd.DataFrame]:
-        base = self.base_path / "bars" / symbol
-        gzip_path = base.with_suffix(".csv.gz")
-        csv_path = base.with_suffix(".csv")
-        if gzip_path.exists():
-            df = pd.read_csv(gzip_path)
-        elif csv_path.exists():
-            df = pd.read_csv(csv_path)
-        else:
+        path = self.base_path / "bars" / f"{symbol}.parquet"
+        if not path.exists():
             return None
+        df = pd.read_parquet(path)
         if limit:
             return df.tail(limit).reset_index(drop=True)
         return df
 
     def save_daily_bars(self, symbol: str, bars: pd.DataFrame) -> None:
-        suffix = ".csv.gz" if self.compression else ".csv"
-        path = (self.base_path / "bars" / symbol).with_suffix(suffix)
-        trimmed = bars.tail(self.keep_last_bars).reset_index(drop=True)
-        trimmed.to_csv(path, index=False, compression="gzip" if self.compression else None)
+        path = self.base_path / "bars" / f"{symbol}.parquet"
+        bars.to_parquet(path, index=False, compression=self.compression)

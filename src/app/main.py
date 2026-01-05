@@ -26,7 +26,7 @@ from src.core.portfolio.position_manager import PositionManager
 from src.core.portfolio.snapshot import PortfolioSnapshot
 from src.core.portfolio.trade_queue import TradeQueue
 from src.core.risk.manager import RiskManager
-from src.core.settings import LiveLockError, Settings, load_settings
+from src.core.settings import Settings, load_settings
 from src.core.storage.db import SQLiteStore
 
 
@@ -52,14 +52,32 @@ def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaCli
     return AlpacaClient(credentials, paper=True), False
 
 
-def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
-    client, _ = build_clients(settings, use_mock=use_mock)
-    compression_enabled = str(settings.storage.data_compression).lower() == "gzip"
-    cache = DataCache(
-        settings.storage.cache_dir,
-        compression=compression_enabled,
-        keep_last_bars=settings.storage.data_cache_keep_bars,
+def build_clients(settings: Settings, use_mock: bool = False) -> tuple[AlpacaClient | MockAlpacaClient, bool]:
+    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
+    if should_mock:
+        return MockAlpacaClient(), True
+    credentials = AlpacaCredentials(
+        api_key=settings.alpaca_paper_api_key,
+        secret_key=settings.alpaca_paper_secret_key,
+        trading_base_url=settings.alpaca.trading_base_url,
+        data_base_url=settings.alpaca.data_base_url,
     )
+    return AlpacaClient(credentials, paper=True), False
+
+
+def build_test_center(settings: Settings, use_mock: bool = False) -> TestCenterService:
+    should_mock = use_mock or not settings.alpaca_paper_api_key or not settings.alpaca_paper_secret_key
+    if should_mock:
+        client = MockAlpacaClient()
+    else:
+        credentials = AlpacaCredentials(
+            api_key=settings.alpaca_paper_api_key,
+            secret_key=settings.alpaca_paper_secret_key,
+            trading_base_url=settings.alpaca.trading_base_url,
+            data_base_url=settings.alpaca.data_base_url,
+        )
+        client = AlpacaClient(credentials, paper=True)
+    cache = DataCache(settings.storage.cache_dir)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
@@ -88,12 +106,7 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     health_monitor = HealthMonitor(started_at=datetime.utcnow())
     client, mock_mode = build_clients(settings, use_mock=False)
-    compression_enabled = str(settings.storage.data_compression).lower() == "gzip"
-    cache = DataCache(
-        settings.storage.cache_dir,
-        compression=compression_enabled,
-        keep_last_bars=settings.storage.data_cache_keep_bars,
-    )
+    cache = DataCache(settings.storage.cache_dir, compression=settings.storage.data_compression)
     data_provider = MarketDataProvider(client=client, cache=cache)
     feature_engine = FeatureEngine(atr_period=settings.risk.stop_takeprofit.atr_period)
     ensemble = EnsembleAggregator(min_score=settings.ensemble.min_final_score_to_trade)
@@ -128,7 +141,6 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
         setup_gate=setup_gate,
         health_monitor=health_monitor,
         position_manager=position_manager,
-        cycle_interval_seconds=settings.app.cycle_interval_seconds,
     )
     test_center = test_center or build_test_center(settings, use_mock=mock_mode)
 
@@ -146,7 +158,6 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
                 "watchlist": settings.universe.watchlist_default,
                 "risk": settings.risk.model_dump(),
                 "mock_mode": mock_mode,
-                "i18n": i18n,
             },
         )
 
@@ -208,16 +219,16 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
             raw = symbols.replace(",", " ").split()
             symbols = [symbol.strip().upper() for symbol in raw if symbol.strip()]
         if not isinstance(symbols, list):
-            return {"error": "Semboller liste veya metin olmalıdır."}
+            return {"error": "symbols must be a list or string."}
         cleaned = []
         for symbol in symbols:
             if not symbol.isalpha() or len(symbol) > 5:
                 continue
             cleaned.append(symbol.upper())
         if not 1 <= len(cleaned) <= settings.universe.watchlist_max_size:
-            return {"error": "İzleme listesi 1 ile 200 sembol arasında olmalıdır."}
+            return {"error": "Watchlist size must be between 1 and 200 symbols."}
         if len(cleaned) < 100:
-            store.add_log("warning", "İzleme listesi 100 sembolün altında, çeşitlendirme azalır.")
+            store.add_log("warning", "Watchlist below recommended 100 symbols for diversification.")
         store.set_watchlist(cleaned)
         return {"symbols": cleaned}
 
@@ -225,34 +236,17 @@ def create_app(settings: Optional[Settings] = None, test_center: Optional[TestCe
     def analyze(payload: dict) -> dict:
         symbols = payload.get("symbols")
         if not isinstance(symbols, list):
-            return {"error": "Semboller liste olmalıdır."}
-        if not symbols:
-            return {"error": "Analiz için en az bir sembol girin."}
+            return {"error": "symbols must be a list."}
         return orchestrator.run_cycle(symbols)
 
     @app.post("/api/analyze/all", response_class=JSONResponse)
     def analyze_all() -> dict:
         symbols = store.get_watchlist()
-        if not symbols:
-            return {"error": "İzleme listesi boş."}
         return orchestrator.run_cycle(symbols)
 
-    @app.post("/api/live/unlock", response_class=JSONResponse)
-    def live_unlock(payload: dict) -> dict:
-        if settings.app.mode != "live":
-            return {"error": "Canlı mod aktif değil."}
-        live_checkbox = bool(payload.get("live_checkbox"))
-        pin = payload.get("pin")
-        phrase = payload.get("phrase")
-        try:
-            expires_at = execution.unlock_live_session(live_checkbox, pin, phrase)
-            return {"expires_at": expires_at.isoformat()}
-        except LiveLockError as exc:
-            return {"error": str(exc)}
-
     @app.get("/api/funding-alerts", response_class=JSONResponse)
-    def funding_alerts(limit: int = 50) -> list[dict]:
-        rows = store.list_funding_alerts(limit=limit)
+    def funding_alerts() -> list[dict]:
+        rows = store.list_funding_alerts(limit=50)
         return [
             {
                 "id": row["id"],

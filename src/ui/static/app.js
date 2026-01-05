@@ -14,23 +14,6 @@ const analyzeStatus = document.getElementById("analyze-status");
 const fundingAlertsPanel = document.getElementById("funding-alerts");
 const logBox = document.getElementById("log-box");
 const watchlistTags = document.querySelector("#watchlist .tags");
-const liveUnlockCheckbox = document.getElementById("live-unlock-checkbox");
-const liveUnlockPin = document.getElementById("live-unlock-pin");
-const liveUnlockPhrase = document.getElementById("live-unlock-phrase");
-const liveUnlockButton = document.getElementById("live-unlock-button");
-const liveUnlockStatus = document.getElementById("live-unlock-status");
-
-function t(key, fallback = "") {
-  return I18N[key] ?? fallback ?? key;
-}
-
-function tPath(path, fallback = "") {
-  return path.split(".").reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : null), I18N) ?? fallback;
-}
-
-function format(template, params = {}) {
-  return template.replace(/\{(\w+)\}/g, (match, key) => (params[key] !== undefined ? params[key] : match));
-}
 
 async function fetchTestCenter() {
   testResults.textContent = t("test_center_running", "Kontroller çalıştırılıyor...");
@@ -47,7 +30,7 @@ async function fetchTestCenter() {
           `<div class="test-result ${check.status}">` +
           `<strong>${check.name}</strong> — ${tPath(`status_labels.${check.status}`, check.status)}<br/>` +
           `<span>${check.message}</span>` +
-          (check.details && check.details.mock_mode ? `<br/><em>${t("test_center_mock", "MOCK MODU AKTİF")}</em>` : "") +
+          (check.details && check.details.mock_mode ? `<br/><em>MOCK MODE ACTIVE</em>` : "") +
           (check.next_step ? `<br/><em>${check.next_step}</em>` : "") +
           "</div>"
       )
@@ -62,201 +45,111 @@ if (refreshButton) {
 }
 
 async function updateOrchestrator(action) {
-  try {
-    const response = await fetch(`/api/orchestrator/${action}`, { method: "POST" });
-    const data = await response.json();
-    return data;
-  } catch (err) {
-    return { error: format(t("orchestrator_error", "Orkestratör isteği başarısız: {error}"), { error: err }) };
-  }
+  const response = await fetch(`/api/orchestrator/${action}`, { method: "POST" });
+  const data = await response.json();
+  return data;
 }
 
 if (startButton) {
   startButton.addEventListener("click", async () => {
     const data = await updateOrchestrator("start");
-    if (data.error) {
-      analyzeStatus.textContent = data.error;
-      return;
-    }
-    const statusLabel = tPath(`orchestrator_statuses.${data.status}`, data.status);
-    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), { status: statusLabel });
+    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
   });
 }
 
 if (pauseButton) {
   pauseButton.addEventListener("click", async () => {
     const data = await updateOrchestrator("pause");
-    if (data.error) {
-      analyzeStatus.textContent = data.error;
-      return;
-    }
-    const statusLabel = tPath(`orchestrator_statuses.${data.status}`, data.status);
-    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), { status: statusLabel });
+    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
   });
 }
 
 if (stopButton) {
   stopButton.addEventListener("click", async () => {
-    const data = await updateOrchestrator("stop");
-    if (data.error) {
-      analyzeStatus.textContent = data.error;
-      return;
-    }
-    const statusLabel = tPath(`orchestrator_statuses.${data.status}`, data.status);
-    analyzeStatus.textContent = format(t("orchestrator_status", "Orkestratör: {status}"), { status: statusLabel });
+    const data = await updteOrchestrator("stop");
+    analyzeStatus.textContent = `Orchestrator: ${data.status}`;
   });
 }
 
 if (saveWatchlistButton) {
   saveWatchlistButton.addEventListener("click", async () => {
-    try {
-      const payload = { symbols: watchlistInput.value };
-      const response = await fetch("/api/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      watchlistStatus.textContent = data.error
-        ? format(t("watchlist_error", "Hata: {error}"), { error: data.error })
-        : format(t("watchlist_saved", "{count} sembol kaydedildi."), { count: data.symbols.length });
-      if (!data.error) {
-        renderWatchlistTags(data.symbols);
-      }
-    } catch (err) {
-      watchlistStatus.textContent = format(t("network_error", "Ağ hatası: {error}"), { error: err });
+it    const payload = { symbols: watchlistInput.value };
+    const response = await fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    watchlistStatus.textContent = data.error
+      ? `Error: ${data.error}`
+      : `Saved ${data.symbols.length} symbols.`;
+    if (!data.error) {
+      renderWatchlistTags(data.symbols);
     }
   });
 }
 
 if (analyzeSelectedButton) {
   analyzeSelectedButton.addEventListener("click", async () => {
-    try {
-      const symbols = analyzeInput.value.replace(/,/g, " ").split(/\s+/).filter(Boolean);
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symbols }),
-      });
-      const data = await response.json();
-      if (data.error) {
-        analyzeStatus.textContent = format(t("analyze_error", "Analiz hatası: {error}"), { error: data.error });
-        return;
-      }
-      analyzeStatus.textContent =
-        data.message || format(t("analyze_processed", "{count} sembol işlendi."), { count: data.processed });
-    } catch (err) {
-      analyzeStatus.textContent = format(t("network_error", "Ağ hatası: {error}"), { error: err });
-    }
+    const symbols = analyzeInput.value.replace(/,/g, " ").split(/\s+/).filter(Boolean);
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols }),
+    });
+    const data = await response.json();
+    analyzeStatus.textContent = data.message || `Processed ${data.processed} symbols.`;
   });
 }
 
 if (analyzeAllButton) {
   analyzeAllButton.addEventListener("click", async () => {
-    try {
-      const response = await fetch("/api/analyze/all", { method: "POST" });
-      const data = await response.json();
-      if (data.error) {
-        analyzeStatus.textContent = format(t("analyze_error", "Analiz hatası: {error}"), { error: data.error });
-        return;
-      }
-      analyzeStatus.textContent =
-        data.message || format(t("analyze_processed", "{count} sembol işlendi."), { count: data.processed });
-    } catch (err) {
-      analyzeStatus.textContent = format(t("network_error", "Ağ hatası: {error}"), { error: err });
-    }
-  });
-}
-
-if (liveUnlockButton) {
-  liveUnlockButton.addEventListener("click", async () => {
-    try {
-      const payload = {
-        live_checkbox: !!liveUnlockCheckbox?.checked,
-        pin: liveUnlockPin?.value || "",
-        phrase: liveUnlockPhrase?.value || "",
-      };
-      const response = await fetch("/api/live/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (data.error) {
-        liveUnlockStatus.textContent = format(t("live_unlock_error", "Canlı kilit açılamadı: {error}"), {
-          error: data.error,
-        });
-        return;
-      }
-      liveUnlockStatus.textContent = format(t("live_unlock_success", "Canlı oturum açıldı. Geçerlilik: {expires}"), {
-        expires: data.expires_at,
-      });
-    } catch (err) {
-      liveUnlockStatus.textContent = format(t("network_error", "Ağ hatası: {error}"), { error: err });
-    }
+    const response = await fetch("/api/analyze/all", { method: "POST" });
+    const data = await response.json();
+    analyzeStatus.textContent = data.message || `Processed ${data.processed} symbols.`;
   });
 }
 
 async function refreshFundingAlerts() {
   if (!fundingAlertsPanel) return;
-  try {
-    const response = await fetch("/api/funding-alerts?limit=50");
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
-      fundingAlertsPanel.innerHTML = `<div class="alert">${t("funding_none", "Aktif fonlama uyarısı yok.")}</div>`;
-      return;
-    }
-    fundingAlertsPanel.innerHTML = data
-      .map(
-        (alert) =>
-          `<div class="stacked-item">` +
-          `<strong>${alert.symbol}</strong> — ${format(t("funding_missing", "Eksik nakit: ${amount}"), { amount: alert.missing_cash })}<br/>` +
-          `<span>${format(t("funding_actions", "Aksiyonlar: {actions}"), { actions: alert.proposed_actions })}</span><br/>` +
-          `<span>${alert.created_at}</span>` +
-          `</div>`
-      )
-      .join("");
-  } catch (err) {
-    fundingAlertsPanel.innerHTML = `<div class="alert">${format(t("funding_load_error", "Fonlama uyarıları alınamadı: {error}"), { error: err })}</div>`;
+  const response = await fetch("/api/funding-alerts");
+  const data = await response.json();
+  if (!Array.isArray(data) || data.length === 0) {
+    fundingAlertsPanel.innerHTML = '<div class="alert">No active funding alerts.</div>';
+    return;
   }
+  fundingAlertsPanel.innerHTML = data
+    .map(
+      (alert) =>
+        `<div class="stacked-item">` +
+        `<strong>${alert.symbol}</strong> — Missing cash: $${alert.missing_cash}<br/>` +
+        `<span>Actions: ${alert.proposed_actions}</span><br/>` +
+        `<span>${alert.created_at}</span>` +
+        `</div>`
+    )
+    .join("");
 }
 
 async function refreshLogs() {
   if (!logBox) return;
-  try {
-    const response = await fetch("/api/logs?limit=50");
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
-      logBox.textContent = t("logs_empty", "Henüz log yok.");
-      return;
-    }
-    logBox.innerHTML = data
-      .map((row) => {
-        const levelLabel = tPath(`log_levels.${row.level}`, row.level.toUpperCase());
-        return `<div>[${row.created_at}] ${levelLabel}: ${row.message}</div>`;
-      })
-      .join("");
-  } catch (err) {
-    logBox.textContent = format(t("logs_load_error", "Loglar alınamadı: {error}"), { error: err });
+  const response = await fetch("/api/logs?limit=50");
+  const data = await response.json();
+  if (!Array.isArray(data) || data.length === 0) {
+    logBox.textContent = "No logs yet.";
+    return;
   }
+  logBox.innerHTML = data
+    .map((row) => `<div>[${row.created_at}] ${row.level.toUpperCase()}: ${row.message}</div>`)
+    .join("");
 }
 
 refreshFundingAlerts();
 refreshLogs();
-fetch("/api/watchlist")
-  .then((response) => response.json())
-  .then((data) => {
-    if (data.symbols) {
-      renderWatchlistTags(data.symbols);
-    }
-  })
-  .catch((err) => {
-    if (watchlistStatus) {
-      watchlistStatus.textContent = format(t("watchlist_load_error", "İzleme listesi yüklenemedi: {error}"), {
-        error: err,
-      });
-    }
-  });
+fetch("/api/watchlist").then((response) => response.json()).then((data) => {
+  if (data.symbols) {
+    renderWatchlistTags(data.symbols);
+  }
+});
 setInterval(refreshFundingAlerts, 15000);
 setInterval(refreshLogs, 15000);
 
