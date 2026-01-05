@@ -366,6 +366,13 @@ def create_app(
             return {"error": "Semboller liste olmalıdır."}
         return orchestrator.run_cycle(symbols)
 
+    @app.post("/api/run-cycle", response_class=JSONResponse)
+    def run_cycle(payload: dict) -> dict:
+        symbols = payload.get("symbols")
+        if not isinstance(symbols, list):
+            return {"error": "Semboller liste olmalıdır."}
+        return orchestrator.run_cycle(symbols)
+
     @app.post("/api/analyze/all", response_class=JSONResponse)
     def analyze_all() -> dict:
         symbols = store.get_watchlist()

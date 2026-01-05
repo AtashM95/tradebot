@@ -50,6 +50,7 @@ Tarayıcıda `http://127.0.0.1:5000` adresini açın.
 ## 2.1 Konfigürasyon
 - `.env.example` dosyasını `.env` olarak kopyalayın ve API anahtarlarını doldurun.
 - `config/config.yaml` içindeki risk, circuit breaker, slippage ve alert ayarlarını projeye göre düzenleyin.
+- `config/sector_map.json` dosyası zorunludur; sektör limitleri için kullanılır. Dosya yoksa uygulama açılışta hata verir.
 
 Örnek:
 ```bash

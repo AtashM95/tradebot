@@ -1,6 +1,8 @@
 import pytest
-from alpaca.trading.enums import OrderClass, TimeInForce
-from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
+
+alpaca = pytest.importorskip("alpaca")
+from alpaca.trading.enums import OrderClass, TimeInForce  # noqa: E402
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest  # noqa: E402
 
 from src.core.contracts import OrderRequest
 from src.core.data.alpaca_client import AlpacaClient, AlpacaCredentials

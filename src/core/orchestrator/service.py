@@ -40,6 +40,7 @@ class Orchestrator:
     ensemble: EnsembleAggregator
     risk_manager: RiskManager
     correlation_manager: CorrelationManager
+    sector_map: dict[str, str]
     execution: ExecutionService
     order_manager: OrderManager
     slippage_model: SlippageModel
