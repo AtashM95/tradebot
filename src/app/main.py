@@ -60,16 +60,8 @@ def _env_mock_mode() -> bool:
     return os.getenv("TRADEBOT_MOCK_MODE", "").strip().lower() in {"1", "true", "yes"}
 
 
-def resolve_path(path: str) -> Path:
-    candidate = Path(path).expanduser()
-    if candidate.is_absolute():
-        return candidate
-    repo_root = Path(__file__).resolve().parents[2]
-    return (repo_root / candidate).resolve()
-
-
 def load_sector_map(path: str) -> dict:
-    sector_path = resolve_path(path)
+    sector_path = Path(path)
     if not sector_path.exists():
         raise ValueError(f"Sector map not found: {sector_path}")
     data = json.loads(sector_path.read_text(encoding="utf-8"))
